@@ -2424,3 +2424,56 @@ select:focus-visible {
     transform: none;
   }
 }
+
+.home-live-catalog {
+  margin-top: 32px;
+  padding: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+}
+
+.home-live-catalog .panel-heading {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.home-live-catalog .panel-heading h3,
+.home-live-catalog .panel-heading p {
+  margin: 0;
+}
+
+.catalog-sync-status,
+.catalog-connection {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.home-live-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+}
+
+.home-live-catalog-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-page);
+}
+
+.home-live-catalog-card h4,
+.home-live-catalog-card p {
+  margin: 0;
+}
+
+.catalog-tools {
+  margin: 14px 0 20px;
+}
+
+.variant-field[hidden] {
+  display: none;
+}

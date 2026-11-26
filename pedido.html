@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Monte seu pedido na My Drink.">
   <title>Monte seu pedido | My Drink</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="storage.js"></script>
   <script>
     try {
@@ -87,6 +91,7 @@
           <section aria-labelledby="catalog-title">
             <h2 class="subsection-title" id="catalog-title">Catálogo</h2>
             <p class="field-help">Em destilados, uma garrafa rende 10 doses.</p>
+            <p id="catalog-sync-status" class="catalog-sync-status" role="status" aria-live="polite">Carregando catálogo...</p>
             <div class="catalog-filters" aria-label="Filtros do catálogo">
               <label for="catalog-search">Buscar produto</label>
               <input id="catalog-search" type="search" autocomplete="off" placeholder="Nome do produto">

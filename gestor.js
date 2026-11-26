@@ -1,25 +1,43 @@
-// Simulação didática: estas credenciais ficam visíveis no código do navegador.
-// Em um sistema real, o login e as permissões devem ser verificados no servidor.
-const GESTOR_USUARIO = "gestor";
-const GESTOR_SENHA = "mydrink@2026";
+// Credenciais apenas para a demonstração local; com Firebase configurado, o login usa Authentication.
+const GESTOR_USUARIO_DEMO = "gestor";
+const GESTOR_SENHA_DEMO = "mydrink@2026";
 
 (function () {
   const storage = window.MyDrinkStorage;
   const loginForm = document.querySelector("#manager-login-form");
 
   if (loginForm) {
-    loginForm.addEventListener("submit", (evento) => {
+    const avisoModo = document.querySelector("#manager-mode-notice");
+    const rotuloUsuario = document.querySelector("#manager-user-label");
+    if (storage.firebaseEstaConfigurado()) {
+      avisoModo.textContent = "Autenticação do gestor pelo Firebase.";
+      rotuloUsuario.textContent = "E-mail do gestor";
+    } else {
+      avisoModo.textContent = "Modo demonstração local: as alterações ficam apenas neste navegador e não são compartilhadas.";
+      rotuloUsuario.textContent = "Usuário de demonstração";
+      document.querySelector("#manager-user").type = "text";
+      document.querySelector("#manager-user").autocomplete = "username";
+    }
+    loginForm.addEventListener("submit", async (evento) => {
       evento.preventDefault();
       const mensagem = document.querySelector("#manager-login-message");
       mensagem.textContent = "";
       const usuario = document.querySelector("#manager-user").value.trim();
       const senha = document.querySelector("#manager-password").value;
-      if (usuario !== GESTOR_USUARIO || senha !== GESTOR_SENHA) {
-        mensagem.textContent = "Usuário ou senha não conferem.";
-        return;
+      try {
+        if (storage.firebaseEstaConfigurado()) {
+          await storage.autenticarGestor(usuario, senha);
+        } else {
+          if (usuario !== GESTOR_USUARIO_DEMO || senha !== GESTOR_SENHA_DEMO) {
+            mensagem.textContent = "Usuário ou senha de demonstração não conferem.";
+            return;
+          }
+          storage.iniciarSessaoGestor();
+        }
+        window.location.href = "gestor.html";
+      } catch (erro) {
+        mensagem.textContent = erro.message || "Não foi possível autenticar o gestor.";
       }
-      storage.iniciarSessaoGestor();
-      window.location.href = "gestor.html";
     });
     return;
   }
@@ -27,14 +45,34 @@ const GESTOR_SENHA = "mydrink@2026";
   const dashboard = document.querySelector("#panel-overview");
   if (!dashboard) return;
 
-  try {
-    if (!storage.temSessaoGestor()) {
+  if (storage.firebaseEstaConfigurado()) {
+    storage.aguardarSessaoGestor()
+      .then((usuario) => {
+        if (!usuario) {
+          window.location.replace("gestor-login.html");
+          return;
+        }
+        iniciarPainel();
+      })
+      .catch(() => window.location.replace("gestor-login.html"));
+  } else {
+    try {
+      if (!storage.temSessaoGestor()) {
+        window.location.replace("gestor-login.html");
+        return;
+      }
+      iniciarPainel();
+    } catch (erro) {
       window.location.replace("gestor-login.html");
-      return;
     }
+  }
+
+  function iniciarPainel() {
+  document.querySelector("#manager-dashboard").hidden = false;
+  try {
     storage.prepararDadosExemplo();
   } catch (erro) {
-    window.location.replace("gestor-login.html");
+    document.querySelector("#manager-message").textContent = erro.message;
     return;
   }
 
@@ -202,7 +240,9 @@ const GESTOR_SENHA = "mydrink@2026";
     try {
       storage.atualizarStatusPedido(id, status);
       aviso.textContent = status === "Cancelado"
-        ? "Pedido cancelado; as unidades voltaram ao estoque."
+        ? storage.firebaseEstaConfigurado()
+          ? "Pedido cancelado. O estoque compartilhado permanece sob controle do gestor."
+          : "Pedido cancelado; as unidades voltaram ao estoque."
         : `Status atualizado: ${status}.`;
       atualizarPainel();
     } catch (erro) {
@@ -249,9 +289,9 @@ const GESTOR_SENHA = "mydrink@2026";
         editar.addEventListener("click", () => abrirFormularioProduto(produto));
         const ativar = criarNo("button", produto.ativo === false ? "Ativar produto" : "Desativar produto", "text-button");
         ativar.type = "button";
-        ativar.addEventListener("click", () => {
+        ativar.addEventListener("click", async () => {
           try {
-            storage.salvarProduto({
+            await storage.salvarProduto({
               ...produto,
               ativo: produto.ativo === false
             });
@@ -263,10 +303,11 @@ const GESTOR_SENHA = "mydrink@2026";
         });
         const remover = criarNo("button", "Remover produto", "text-button danger-text");
         remover.type = "button";
-        remover.addEventListener("click", () => {
+        remover.textContent = "Excluir definitivamente";
+        remover.addEventListener("click", async () => {
           if (!window.confirm(`Remover ${produto.nome} e todas as opções?`)) return;
           try {
-            storage.removerProduto(produto.id);
+            await storage.removerProduto(produto.id);
             aviso.textContent = "Produto removido.";
             atualizarPainel();
           } catch (erro) {
@@ -416,10 +457,10 @@ const GESTOR_SENHA = "mydrink@2026";
       document.querySelector("#copao-drink-volume").value = medidas.copao.bebidaNoCopaoMl || "";
     }
 
-    document.querySelector("#store-measures-form").addEventListener("submit", (evento) => {
+    document.querySelector("#store-measures-form").addEventListener("submit", async (evento) => {
       evento.preventDefault();
       try {
-        storage.salvarMedidasLoja({
+        await storage.salvarMedidasLoja({
           copao: {
             tamanhoCopoMl: document.querySelector("#copao-size").value,
             energeticoIncluso: document.querySelector("#copao-energy").checked,
@@ -447,6 +488,23 @@ const GESTOR_SENHA = "mydrink@2026";
     mostrarClientes();
   }
 
+  function atualizarStatusConexaoCatalogo(estado) {
+    const conexao = document.querySelector("#catalog-connection");
+    const localNotice = document.querySelector("#local-mode-notice");
+    localNotice.hidden = estado.status !== "local";
+    if (estado.status === "online" && estado.ultimaSincronizacao) {
+      const hora = new Date(estado.ultimaSincronizacao).toLocaleTimeString("pt-BR");
+      conexao.textContent = `Catálogo online · última sincronização às ${hora}.`;
+    } else if (estado.status === "offline") {
+      const ultima = estado.ultimaSincronizacao
+        ? ` Última sincronização: ${new Date(estado.ultimaSincronizacao).toLocaleString("pt-BR")}.`
+        : "";
+      conexao.textContent = `Offline (usando cópia local). ${estado.mensagem}${ultima}`;
+    } else {
+      conexao.textContent = estado.mensagem || "Carregando catálogo...";
+    }
+  }
+
   function atualizarControleHorarioEstendido() {
     try {
       const status = storage.obterStatusFuncionamento();
@@ -462,10 +520,10 @@ const GESTOR_SENHA = "mydrink@2026";
     }
   }
 
-  extendedHoursButton.addEventListener("click", () => {
+  extendedHoursButton.addEventListener("click", async () => {
     try {
       const status = storage.obterStatusFuncionamento();
-      storage.definirHorarioEstendidoHoje(!status.horarioEstendidoAtivo);
+      await storage.definirHorarioEstendidoHoje(!status.horarioEstendidoAtivo);
       aviso.textContent = status.horarioEstendidoAtivo
         ? "Horário estendido desativado."
         : "Horário estendido ativado para hoje, até as 3h.";
@@ -489,7 +547,7 @@ const GESTOR_SENHA = "mydrink@2026";
     if (tipo === "number") {
       input.min = "0";
       input.step = nomeCampo === "preco" ? "0.01" : "1";
-      input.required = nomeCampo !== "preco";
+      input.required = !["preco", "precoAdicional"].includes(nomeCampo);
       if (nomeCampo === "preco") input.placeholder = "[PREÇO A CONFIRMAR]";
     }
     input.value = valor === null || valor === undefined ? "" : String(valor);
@@ -561,6 +619,10 @@ const GESTOR_SENHA = "mydrink@2026";
     const nomeInput = campos.querySelector('[data-variant-field="nome"]');
     const estoqueInput = criarCampoVariante(campos, "Estoque", "estoque", "number", variante.estoque === undefined ? 0 : variante.estoque, indice);
     const minimoInput = criarCampoVariante(campos, "Quantidade mínima", "minimo", "number", variante.minimo === undefined ? 0 : variante.minimo, indice);
+    const adicionalInput = criarCampoVariante(campos, "Adicional do sabor (opcional)", "precoAdicional", "number", variante.precoAdicional, indice);
+    adicionalInput.closest(".variant-field").hidden = !(produtoEmEdicao && produtoEmEdicao.somenteCopao);
+    adicionalInput.placeholder = "Sem adicional";
+    adicionalInput.step = "0.01";
     const disponibilidade = criarNo("label", "", "variant-availability");
     const ativo = document.createElement("input");
     ativo.type = "checkbox";
@@ -579,10 +641,10 @@ const GESTOR_SENHA = "mydrink@2026";
     variantList.append(linha);
     nomeInput.addEventListener("input", atualizarCamposDerivados);
     estoqueInput.addEventListener("input", atualizarCamposDerivados);
-    estoqueInput.addEventListener("change", () => {
+    estoqueInput.addEventListener("change", async () => {
       if (!produtoEmEdicao || !linha.dataset.variantId) return;
       try {
-        storage.atualizarEstoqueVariante(produtoEmEdicao.id, linha.dataset.variantId, estoqueInput.value);
+        await storage.atualizarEstoqueVariante(produtoEmEdicao.id, linha.dataset.variantId, estoqueInput.value);
         estoqueInput.dataset.savedStock = estoqueInput.value;
         aviso.textContent = `Estoque de ${produtoEmEdicao.nome} salvo.`;
         atualizarPainel();
@@ -592,10 +654,10 @@ const GESTOR_SENHA = "mydrink@2026";
         aviso.textContent = erro.message;
       }
     });
-    minimoInput.addEventListener("change", () => {
+    minimoInput.addEventListener("change", async () => {
       if (!produtoEmEdicao || !linha.dataset.variantId) return;
       try {
-        storage.atualizarQuantidadeVariante(produtoEmEdicao.id, linha.dataset.variantId, {
+        await storage.atualizarQuantidadeVariante(produtoEmEdicao.id, linha.dataset.variantId, {
           minimo: minimoInput.value
         });
         minimoInput.dataset.savedMinimum = minimoInput.value;
@@ -670,7 +732,7 @@ const GESTOR_SENHA = "mydrink@2026";
     linha.querySelector('[data-variant-field="nome"]').focus();
   });
   document.querySelector("#cancel-product").addEventListener("click", fecharFormularioProduto);
-  stockForm.addEventListener("submit", (evento) => {
+  stockForm.addEventListener("submit", async (evento) => {
     evento.preventDefault();
     const mensagem = document.querySelector("#product-message");
     mensagem.textContent = "";
@@ -683,6 +745,7 @@ const GESTOR_SENHA = "mydrink@2026";
       id: linha.dataset.variantId,
       nome: linha.querySelector('[data-variant-field="nome"]').value,
       preco: linha.querySelector('[data-variant-field="preco"]').value,
+      precoAdicional: linha.querySelector('[data-variant-field="precoAdicional"]').value,
       estoque: linha.querySelector('[data-variant-field="estoque"]').value,
       minimo: linha.querySelector('[data-variant-field="minimo"]').value,
       ativo: linha.querySelector('[data-variant-field="ativo"]').checked
@@ -701,7 +764,7 @@ const GESTOR_SENHA = "mydrink@2026";
       return;
     }
     try {
-      storage.salvarProduto({
+      await storage.salvarProduto({
         id: produtoEmEdicao ? produtoEmEdicao.id : "",
         nome,
         categoria: document.querySelector("#product-category").value,
@@ -724,26 +787,26 @@ const GESTOR_SENHA = "mydrink@2026";
   document.querySelector("#stock-category-filter").addEventListener("change", mostrarEstoque);
   document.querySelector("#stock-search").addEventListener("input", mostrarEstoque);
   document.querySelector("#stock-only-low").addEventListener("change", mostrarEstoque);
-  document.querySelector("#fill-demo-stock").addEventListener("click", () => {
+  document.querySelector("#fill-demo-stock").addEventListener("click", async () => {
     try {
-      const quantidade = storage.preencherEstoqueDemonstracao();
+      const quantidade = await storage.preencherEstoqueDemonstracao();
       aviso.textContent = `${quantidade} produtos receberam 10 unidades para demonstração. Use "Restaurar dados de exemplo" para zerá-los.`;
       atualizarPainel();
     } catch (erro) {
       aviso.textContent = erro.message;
     }
   });
-  document.querySelector("#restock-low").addEventListener("click", () => {
+  document.querySelector("#restock-low").addEventListener("click", async () => {
     if (!window.confirm("Adicionar 25 unidades às bebidas em falta e 10 unidades aos demais produtos em falta?")) return;
     try {
-      const resultado = storage.reporProdutosEmFalta();
+      const resultado = await storage.reporProdutosEmFalta();
       aviso.textContent = `${resultado.unidadesAdicionadas} unidades adicionadas em ${resultado.produtosAlterados} produtos em falta.`;
       atualizarPainel();
     } catch (erro) {
       aviso.textContent = erro.message;
     }
   });
-  document.querySelector("#toggle-category-active").addEventListener("click", () => {
+  document.querySelector("#toggle-category-active").addEventListener("click", async () => {
     const categoria = document.querySelector("#stock-category-filter").value;
     if (!categoria) {
       aviso.textContent = "Selecione uma categoria para ativar ou desativar os produtos.";
@@ -752,15 +815,19 @@ const GESTOR_SENHA = "mydrink@2026";
     const produtos = storage.buscarProdutos().filter((produto) => produto.categoria === categoria);
     if (!produtos.length) return;
     const ativar = produtos.every((produto) => produto.ativo === false);
-    produtos.forEach((produto) => storage.salvarProduto({ ...produto, ativo: ativar }));
-    aviso.textContent = `Produtos da categoria ${categoria} ${ativar ? "ativados" : "desativados"}.`;
-    atualizarPainel();
+    try {
+      await storage.salvarProdutosEmLote(produtos.map((produto) => ({ ...produto, ativo: ativar })));
+      aviso.textContent = `Produtos da categoria ${categoria} ${ativar ? "ativados" : "desativados"}.`;
+      atualizarPainel();
+    } catch (erro) {
+      aviso.textContent = erro.message;
+    }
   });
-  document.querySelector("#restore-demo-data").addEventListener("click", () => {
+  document.querySelector("#restore-demo-data").addEventListener("click", async () => {
     if (!window.confirm("Adicionar novamente os produtos e pedidos fictícios de exemplo?")) return;
     try {
-      storage.restaurarDadosExemplo();
-      storage.restaurarEstoqueDemonstracao();
+      await storage.restaurarDadosExemplo();
+      await storage.restaurarEstoqueDemonstracao();
       aviso.textContent = "Dados de exemplo restaurados. Seus dados não demonstrativos foram mantidos.";
       atualizarPainel();
     } catch (erro) {
@@ -792,11 +859,70 @@ const GESTOR_SENHA = "mydrink@2026";
     aviso.textContent = "Arquivo CSV de vendas preparado.";
   });
 
-  document.querySelector("[data-manager-logout]").addEventListener("click", () => {
-    storage.encerrarSessaoGestor();
-    window.location.replace("gestor-login.html");
+  document.querySelector("#publish-initial-catalog").addEventListener("click", async () => {
+    try {
+      const quantidade = await storage.publicarCatalogoInicial();
+      aviso.textContent = `${quantidade} produtos novos publicados. Produtos já existentes e editados foram preservados.`;
+    } catch (erro) {
+      aviso.textContent = erro.message;
+    }
   });
 
+  document.querySelector("#export-catalog").addEventListener("click", () => {
+    try {
+      const arquivo = new Blob([JSON.stringify(storage.exportarCatalogo(), null, 2)], {
+        type: "application/json;charset=utf-8"
+      });
+      const url = URL.createObjectURL(arquivo);
+      const link = criarNo("a");
+      link.href = url;
+      link.download = "catalogo-mydrink.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      aviso.textContent = "Backup JSON do catálogo preparado.";
+    } catch (erro) {
+      aviso.textContent = erro.message;
+    }
+  });
+
+  const arquivoImportacao = document.querySelector("#import-catalog-file");
+  document.querySelector("#import-catalog").addEventListener("click", () => arquivoImportacao.click());
+  arquivoImportacao.addEventListener("change", async () => {
+    const arquivo = arquivoImportacao.files[0];
+    if (!arquivo) return;
+    try {
+      const conteudo = await arquivo.text();
+      const backup = JSON.parse(conteudo);
+      const previa = await storage.previsualizarImportacaoCatalogo(backup);
+      const confirmar = window.confirm(
+        `Prévia da importação:\n${previa.criar} produtos serão criados e ${previa.atualizar} atualizados.\nAs configurações incluídas também serão atualizadas. Deseja continuar?`
+      );
+      if (!confirmar) return;
+      await storage.importarCatalogo(backup);
+      aviso.textContent = `Importação concluída: ${previa.criar} produtos criados e ${previa.atualizar} atualizados.`;
+    } catch (erro) {
+      aviso.textContent = erro.message || "Não foi possível importar o catálogo.";
+    } finally {
+      arquivoImportacao.value = "";
+    }
+  });
+
+  document.querySelector("[data-manager-logout]").addEventListener("click", async () => {
+    try {
+      await storage.encerrarSessaoGestor();
+      window.location.replace("gestor-login.html");
+    } catch (erro) {
+      aviso.textContent = erro.message;
+    }
+  });
+
+  storage.ouvirCatalogo(() => {
+    configurarControlesCatalogoGestor();
+    carregarMedidasLoja();
+    atualizarPainel();
+    atualizarControleHorarioEstendido();
+  }, atualizarStatusConexaoCatalogo);
+
   mostrarAba("overview");
-  atualizarPainel();
+  }
 })();

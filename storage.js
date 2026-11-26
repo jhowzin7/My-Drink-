@@ -1,5 +1,5 @@
-// Simulação didática: autenticação e dados vivem apenas neste navegador.
-// Um sistema real precisa de servidor, banco de dados e controles de segurança.
+// Clientes, senhas, perfis e pedidos continuam apenas neste navegador; não os envie ao Firestore.
+// O Firebase, quando configurado, compartilha somente o catálogo e as configurações públicas da loja.
 (function () {
   const CHAVES = {
     usuarios: "mydrink.usuarios",
@@ -15,6 +15,9 @@
   const CHAVE_CATALOGO_EXPANDIDO = "mydrink.catalogoExpandidoV2";
   const CHAVE_ESTOQUE_DEMO = "mydrink.estoqueDemonstracao";
   const CHAVE_MEDIDAS_LOJA = "mydrink.medidasLoja";
+  const CHAVE_CATEGORIAS_CATALOGO = "mydrink.catalogoCategorias";
+  const CHAVE_GELOS_CATALOGO = "mydrink.catalogoGelos";
+  const CHAVE_FIREBASE_SINCRONIZADO = "mydrink.catalogoUltimaSincronizacao";
   const DOSES_POR_GARRAFA = 10;
   const COPAO_CONFIG_PADRAO = {
     tamanhoCopoMl: 700,
@@ -23,6 +26,14 @@
   };
   const DOSE_CONFIG_PADRAO = { tamanhoCopoMl: 200 };
   const CHAVE_HORARIO_ESTENDIDO = "mydrink.horarioEstendido";
+  const CONFIGURACAO_FIREBASE = window.MYDRINK_FIREBASE_CONFIG || {};
+  const FIREBASE_CONFIGURADO = ["apiKey", "authDomain", "projectId", "appId"].every((campo) => {
+    return typeof CONFIGURACAO_FIREBASE[campo] === "string" && CONFIGURACAO_FIREBASE[campo].trim();
+  });
+  let firebaseApp = null;
+  let firebaseAuth = null;
+  let firebaseDb = null;
+  let erroInicializacaoFirebase = null;
   const CONFIGURACAO_LOJA = {
     endereco: "Avenida JK, 134 – Centro, Betim – MG",
     horarios: {
@@ -47,6 +58,19 @@
   const FUSO_HORARIO_LOJA = CONFIGURACAO_LOJA.horarios.fuso;
   const HORARIOS_FUNCIONAMENTO = CONFIGURACAO_LOJA.horarios.dias;
   const DIAS_SEMANA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  if (FIREBASE_CONFIGURADO && window.firebase) {
+    try {
+      firebaseApp = window.firebase.apps.length
+        ? window.firebase.app()
+        : window.firebase.initializeApp(CONFIGURACAO_FIREBASE);
+      firebaseAuth = firebaseApp.auth();
+      firebaseDb = firebaseApp.firestore();
+    } catch (erro) {
+      erroInicializacaoFirebase = erro;
+      console.error("Não foi possível iniciar o Firebase.", erro);
+    }
+  }
 
   function dadosDataBrasilia(data = new Date()) {
     const partes = new Intl.DateTimeFormat("en-US", {
@@ -136,17 +160,22 @@
     };
   }
 
-  function definirHorarioEstendidoHoje(ativar) {
+  async function definirHorarioEstendidoHoje(ativar) {
     if (typeof ativar !== "boolean") throw new Error("Informe se o horário estendido deve ficar ativo.");
+    const dataEstendida = ativar ? dadosDataBrasilia().data : null;
     if (ativar) {
       const status = obterStatusFuncionamento();
       if (!HORARIOS_FUNCIONAMENTO[dadosDataBrasilia().dia] && !status.horarioEstendidoAtivo) {
         throw new Error("O horário de domingo ainda precisa ser confirmado antes de ativar o horário estendido.");
       }
-      localStorage.setItem(CHAVE_HORARIO_ESTENDIDO, dadosDataBrasilia().data);
+      if (FIREBASE_CONFIGURADO) await gravarConfiguracaoCompartilhada("horario", { dataEstendida });
+      else localStorage.setItem(CHAVE_HORARIO_ESTENDIDO, dataEstendida);
     } else {
       const status = obterStatusFuncionamento();
-      if (status.dataEstendida) localStorage.removeItem(CHAVE_HORARIO_ESTENDIDO);
+      if (status.dataEstendida) {
+        if (FIREBASE_CONFIGURADO) await gravarConfiguracaoCompartilhada("horario", { dataEstendida: null });
+        else localStorage.removeItem(CHAVE_HORARIO_ESTENDIDO);
+      }
     }
     return obterStatusFuncionamento();
   }
@@ -326,7 +355,181 @@
     }
   }
 
-  function salvarMedidasLoja(medidas) {
+  function firebaseEstaConfigurado() {
+    return FIREBASE_CONFIGURADO;
+  }
+
+  function firebaseEstaDisponivel() {
+    return Boolean(firebaseDb && firebaseAuth);
+  }
+
+  function exigirFirebase() {
+    if (!FIREBASE_CONFIGURADO) return false;
+    if (!firebaseEstaDisponivel()) {
+      throw new Error(erroInicializacaoFirebase
+        ? "O Firebase está configurado, mas não pôde ser iniciado. Confira firebase-config.js e os scripts do Firebase."
+        : "O Firebase está configurado, mas indisponível. Confira a conexão e tente novamente.");
+    }
+    return true;
+  }
+
+  function emailGestorAtual() {
+    exigirFirebase();
+    const email = firebaseAuth.currentUser && firebaseAuth.currentUser.email;
+    if (!email || email.toLowerCase() !== String(CONFIGURACAO_FIREBASE.managerEmail || "").trim().toLowerCase()) {
+      throw new Error("Entre com a conta de gestor autorizada para alterar o catálogo.");
+    }
+    return email;
+  }
+
+  function salvarCacheProdutos(produtos) {
+    salvarLista(CHAVES.produtos, produtos.map(normalizarProduto));
+  }
+
+  function salvarCacheConfiguracao(chave, valor) {
+    localStorage.setItem(chave, JSON.stringify(valor));
+  }
+
+  function ultimaSincronizacaoCatalogo() {
+    return localStorage.getItem(CHAVE_FIREBASE_SINCRONIZADO) || "";
+  }
+
+  function ouvirCatalogo(aoAtualizar, aoMudarStatus = () => {}) {
+    let cancelado = false;
+    const cancelamentos = [];
+    let gelosRecebidos = false;
+    let produtosRecebidos = null;
+    const atualizar = () => {
+      if (!cancelado) aoAtualizar(buscarProdutos());
+    };
+    const mesclarGelos = () => {
+      if (!gelosRecebidos || !produtosRecebidos) return;
+      const sabores = lerListaOpcional(CHAVE_GELOS_CATALOGO);
+      if (!sabores || !Array.isArray(sabores.sabores)) return;
+      const porId = new Map(sabores.sabores.map((sabor) => [sabor.id, sabor]));
+      const gelo = produtosRecebidos.find((produto) => produto.id === "gelo-copao");
+      if (!gelo) return;
+      if (sabores.atualizadoEm && gelo.atualizadoEm
+        && new Date(gelo.atualizadoEm) >= new Date(sabores.atualizadoEm)) return;
+      gelo.variantes = gelo.variantes.map((variante) => {
+        const sabor = porId.get(variante.id);
+        return sabor ? {
+          ...variante,
+          estoque: Number.isInteger(sabor.estoque) ? sabor.estoque : variante.estoque,
+          minimo: Number.isInteger(sabor.minimo) ? sabor.minimo : variante.minimo,
+          precoAdicional: sabor.precoAdicional === undefined ? variante.precoAdicional : sabor.precoAdicional,
+          ativo: sabor.ativo !== false
+        } : variante;
+      });
+      salvarCacheProdutos(produtosRecebidos);
+    };
+    const informarStatus = (status, mensagem = "") => {
+      if (!cancelado) {
+        aoMudarStatus({
+          status,
+          mensagem,
+          ultimaSincronizacao: ultimaSincronizacaoCatalogo()
+        });
+      }
+    };
+
+    if (!FIREBASE_CONFIGURADO) {
+      informarStatus("local", "Modo local: as alterações não são compartilhadas com os visitantes.");
+      atualizar();
+      return () => { cancelado = true; };
+    }
+    if (!firebaseEstaDisponivel()) {
+      informarStatus("offline", "Mostrando a última versão salva do catálogo.");
+      atualizar();
+      return () => { cancelado = true; };
+    }
+
+    informarStatus("carregando", "Carregando catálogo...");
+    atualizar();
+    const atualizacaoRemota = () => {
+      localStorage.setItem(CHAVE_FIREBASE_SINCRONIZADO, new Date().toISOString());
+      informarStatus("online", "Catálogo online");
+      atualizar();
+    };
+    const falhaRemota = (erro) => {
+      console.error("Falha ao sincronizar o catálogo do Firestore.", erro);
+      informarStatus("offline", "Não foi possível atualizar o catálogo agora. Mostrando a última versão salva do catálogo.");
+      atualizar();
+    };
+
+    cancelamentos.push(firebaseDb.collection("produtos").onSnapshot(
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (snapshot.metadata.fromCache) {
+          informarStatus("offline", "Mostrando a última versão salva do catálogo.");
+          atualizar();
+          return;
+        }
+        const produtos = snapshot.docs.map((documento) => ({
+          ...documento.data(),
+          id: documento.id
+        }));
+        produtosRecebidos = produtos;
+        mesclarGelos();
+        salvarCacheProdutos(produtosRecebidos);
+        atualizacaoRemota();
+      },
+      falhaRemota
+    ));
+
+    [
+      ["gelos", CHAVE_GELOS_CATALOGO],
+      ["medidas", CHAVE_MEDIDAS_LOJA],
+      ["horario", CHAVE_HORARIO_ESTENDIDO],
+      ["categorias", CHAVE_CATEGORIAS_CATALOGO]
+    ].forEach(([documentoId, chave]) => {
+      cancelamentos.push(firebaseDb.collection("config").doc(documentoId).onSnapshot(
+        (snapshot) => {
+          if (!snapshot.exists || snapshot.metadata.fromCache) return;
+          const dados = snapshot.data();
+          if (documentoId === "gelos") gelosRecebidos = true;
+          if (documentoId === "horario") {
+            if (dados.dataEstendida) localStorage.setItem(chave, dados.dataEstendida);
+            else localStorage.removeItem(chave);
+          } else {
+            salvarCacheConfiguracao(chave, dados);
+          }
+          if (documentoId === "gelos") mesclarGelos();
+          atualizar();
+        },
+        falhaRemota
+      ));
+    });
+
+    const aoConectar = () => {
+      informarStatus("carregando", "Reconectando ao catálogo...");
+    };
+    window.addEventListener("online", aoConectar);
+    return () => {
+      cancelado = true;
+      cancelamentos.forEach((cancelar) => cancelar());
+      window.removeEventListener("online", aoConectar);
+    };
+  }
+
+  async function gravarConfiguracaoCompartilhada(documentoId, dados) {
+    if (!exigirFirebase()) return;
+    const atualizado = removerCamposIndefinidos({
+      ...dados,
+      atualizadoEm: new Date().toISOString(),
+      atualizadoPor: emailGestorAtual()
+    });
+    await firebaseDb.collection("config").doc(documentoId).set(atualizado, { merge: true });
+    if (documentoId === "medidas") salvarCacheConfiguracao(CHAVE_MEDIDAS_LOJA, atualizado);
+    if (documentoId === "gelos") salvarCacheConfiguracao(CHAVE_GELOS_CATALOGO, atualizado);
+    if (documentoId === "categorias") salvarCacheConfiguracao(CHAVE_CATEGORIAS_CATALOGO, atualizado);
+    if (documentoId === "horario") {
+      if (atualizado.dataEstendida) localStorage.setItem(CHAVE_HORARIO_ESTENDIDO, atualizado.dataEstendida);
+      else localStorage.removeItem(CHAVE_HORARIO_ESTENDIDO);
+    }
+  }
+
+  async function salvarMedidasLoja(medidas) {
     const atual = obterMedidasLoja();
     const novas = {
       copao: {
@@ -342,7 +545,8 @@
         tamanhoCopoMl: Number(medidas.dose.tamanhoCopoMl) || atual.dose.tamanhoCopoMl
       }
     };
-    localStorage.setItem(CHAVE_MEDIDAS_LOJA, JSON.stringify(novas));
+    if (FIREBASE_CONFIGURADO) await gravarConfiguracaoCompartilhada("medidas", novas);
+    else salvarCacheConfiguracao(CHAVE_MEDIDAS_LOJA, novas);
     return novas;
   }
 
@@ -676,6 +880,32 @@
     return `${prefixo}-${Date.now().toString(36)}-${aleatorio}`;
   }
 
+  function gerarIdProduto(nome, produtos) {
+    const base = String(nome || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "produto";
+    let id = base;
+    let sufixo = 2;
+    while (produtos.some((produto) => produto.id === id)) {
+      id = `${base}-${sufixo}`;
+      sufixo += 1;
+    }
+    return id;
+  }
+
+  function removerCamposIndefinidos(valor) {
+    if (Array.isArray(valor)) return valor.map(removerCamposIndefinidos);
+    if (valor && typeof valor === "object") {
+      return Object.fromEntries(Object.entries(valor)
+        .filter(([, item]) => item !== undefined)
+        .map(([chave, item]) => [chave, removerCamposIndefinidos(item)]));
+    }
+    return valor;
+  }
+
   function prepararDadosExemplo() {
     if (localStorage.getItem(CHAVES.produtos) === null) {
       salvarLista(CHAVES.produtos, [...produtosExemplo, ...produtosCatalogoInicial]);
@@ -807,16 +1037,23 @@
     localStorage.setItem(CHAVE_CATALOGO_COPAO, "1");
   }
 
-  function restaurarDadosExemplo() {
-    const produtos = buscarProdutos().filter((produto) => !produto.exemplo && !produtoDeExemplo(produto));
+  async function restaurarDadosExemplo() {
+    const catalogo = buscarProdutos();
+    const produtos = catalogo.filter((produto) => !produto.exemplo && !produtoDeExemplo(produto));
     const pedidos = buscarPedidos().filter((pedido) => !pedido.exemplo);
+    const pedidosAtualizados = [...pedidos, ...criarPedidosExemplo()];
+    if (FIREBASE_CONFIGURADO) {
+      await publicarCatalogoInicial();
+      salvarLista(CHAVES.pedidos, pedidosAtualizados);
+      return;
+    }
     salvarTransacao({
       [CHAVES.produtos]: [...produtos, ...produtosExemplo],
-      [CHAVES.pedidos]: [...pedidos, ...criarPedidosExemplo()]
+      [CHAVES.pedidos]: pedidosAtualizados
     });
   }
 
-  function preencherEstoqueDemonstracao() {
+  async function preencherEstoqueDemonstracao() {
     const ids = [];
     const produtos = buscarProdutos().map((produto) => {
       if (produto.catalogoInicial === false) {
@@ -829,28 +1066,42 @@
       }
       return produto;
     });
-    salvarProdutos(produtos);
+    if (FIREBASE_CONFIGURADO) {
+      await gravarProdutosCompartilhados(
+        produtos.filter((produto) => ids.includes(produto.id)),
+        produtos,
+        produtos.some((produto) => ids.includes(produto.id) && produto.id === "gelo-copao")
+      );
+    } else {
+      salvarProdutos(produtos);
+    }
     localStorage.setItem(CHAVE_ESTOQUE_DEMO, JSON.stringify(ids));
     return ids.length;
   }
 
-  function restaurarEstoqueDemonstracao() {
+  async function restaurarEstoqueDemonstracao() {
     const ids = lerListaOpcional(CHAVE_ESTOQUE_DEMO);
-    if (!Array.isArray(ids)) return 0;
-    const produtos = buscarProdutos().map((produto) => {
-      if (!ids.includes(produto.id)) return produto;
+    const idsDemonstracao = Array.isArray(ids) ? ids : [];
+    const catalogoAnterior = buscarProdutos();
+    const produtos = catalogoAnterior.map((produto) => {
+      if (!idsDemonstracao.includes(produto.id) && !produto.demonstracaoEstoque) return produto;
       return {
         ...produto,
         demonstracaoEstoque: false,
         variantes: produto.variantes.map((variante) => ({ ...variante, estoque: 0 }))
       };
     });
-    salvarProdutos(produtos);
+    const alterados = produtos.filter((produto, indice) => produto !== catalogoAnterior[indice]);
+    if (FIREBASE_CONFIGURADO) {
+      await gravarProdutosCompartilhados(alterados, produtos, alterados.some((produto) => produto.id === "gelo-copao"));
+    } else {
+      salvarProdutos(produtos);
+    }
     localStorage.removeItem(CHAVE_ESTOQUE_DEMO);
-    return ids.length;
+    return alterados.length;
   }
 
-  function reporProdutosEmFalta() {
+  async function reporProdutosEmFalta() {
     const categoriasBebidas = new Set([
       "Bebidas",
       "Cervejas",
@@ -863,7 +1114,9 @@
     ]);
     let unidadesAdicionadas = 0;
     let produtosAlterados = 0;
-    const produtos = buscarProdutos().map((produto) => {
+    const idsAlterados = new Set();
+    const catalogoAnterior = buscarProdutos();
+    const produtos = catalogoAnterior.map((produto) => {
       if (produto.ativo === false) return produto;
       const quantidade = categoriasBebidas.has(produto.categoria) ? 25 : 10;
       let alterouProduto = false;
@@ -880,10 +1133,18 @@
         unidadesAdicionadas += quantidade;
         return { ...variante, estoque: variante.estoque + quantidade };
       });
-      if (alterouProduto) produtosAlterados += 1;
+      if (alterouProduto) {
+        produtosAlterados += 1;
+        idsAlterados.add(produto.id);
+      }
       return { ...produto, variantes };
     });
-    salvarProdutos(produtos);
+    const alterados = produtos.filter((produto) => idsAlterados.has(produto.id));
+    if (FIREBASE_CONFIGURADO) {
+      await gravarProdutosCompartilhados(alterados, produtos, alterados.some((produto) => produto.id === "gelo-copao"));
+    } else {
+      salvarProdutos(produtos);
+    }
     return { unidadesAdicionadas, produtosAlterados };
   }
 
@@ -1016,6 +1277,9 @@
     const preco = variante.preco === "" || variante.preco === null || variante.preco === undefined
       ? null
       : Number(variante.preco);
+    const precoAdicional = variante.precoAdicional === "" || variante.precoAdicional === null || variante.precoAdicional === undefined
+      ? null
+      : Number(variante.precoAdicional);
     if (variante.estoque === "" || variante.minimo === "") {
       throw new Error(`Informe o estoque e o mínimo para a opção ${nome || indice + 1}.`);
     }
@@ -1024,6 +1288,9 @@
     if (!nome) throw new Error("Cada opção de venda precisa ter um nome.");
     if (preco !== null && (!Number.isFinite(preco) || preco < 0)) {
       throw new Error(`Informe um preço válido para a opção ${nome} ou deixe-o em branco.`);
+    }
+    if (precoAdicional !== null && (!Number.isFinite(precoAdicional) || precoAdicional < 0)) {
+      throw new Error(`Informe um adicional válido para a opção ${nome} ou deixe-o em branco.`);
     }
     if (!Number.isInteger(estoque) || estoque < 0 || !Number.isInteger(minimo) || minimo < 0) {
       throw new Error(`Estoque e mínimo da opção ${nome} precisam ser números inteiros não negativos.`);
@@ -1034,6 +1301,7 @@
       id: variante.id || `${produtoId}-opcao-${indice + 1}`,
       nome,
       preco,
+      precoAdicional,
       estoque,
       minimo,
       ativo: variante.ativo !== false,
@@ -1060,6 +1328,10 @@
     if (!produto || !produto.id || !String(produto.nome || "").trim()) {
       throw new Error("Há um produto sem identificação ou nome válido no armazenamento local.");
     }
+    if (String(produto.id).includes("/")) throw new Error("O identificador do produto não pode conter barras.");
+    if (/[<>]/.test(String(produto.nome)) || /[<>]/.test(String(produto.categoria || ""))) {
+      throw new Error("O nome e a categoria do produto não podem conter marcação HTML.");
+    }
     const variantesLegadas = Array.isArray(produto.variantes)
       ? produto.variantes
       : [{
@@ -1073,6 +1345,9 @@
       throw new Error(`O produto ${produto.nome} precisa ter pelo menos uma opção de venda.`);
     }
     const variantes = variantesLegadas.map((variante, indice) => normalizarVariante(variante, produto.id, indice));
+    variantes.forEach((variante) => {
+      if (/[<>]/.test(variante.nome)) throw new Error("O nome da opção não pode conter marcação HTML.");
+    });
     const ids = new Set();
     variantes.forEach((variante) => {
       if (ids.has(variante.id)) throw new Error(`O produto ${produto.nome} tem opções com identificadores repetidos.`);
@@ -1134,12 +1409,59 @@
   }
 
   function salvarProdutos(produtos) {
-    salvarLista(CHAVES.produtos, produtos.map(normalizarProduto));
+    salvarCacheProdutos(produtos);
   }
 
-  function salvarProduto(produto) {
+  function dadosConfiguracaoGelos(produto) {
+    return {
+      produtoId: produto.id,
+      sabores: produto.variantes.map((variante) => ({
+        id: variante.id,
+        nome: variante.nome,
+        estoque: variante.estoque,
+        minimo: variante.minimo,
+        precoAdicional: variante.precoAdicional,
+        ativo: variante.ativo !== false
+      }))
+    };
+  }
+
+  async function gravarProdutosCompartilhados(alterados, catalogoAtual, incluirGelos = false) {
+    const email = emailGestorAtual();
+    const produtos = alterados.map(normalizarProduto);
+    for (let inicio = 0; inicio < produtos.length; inicio += 450) {
+      const lote = firebaseDb.batch();
+      produtos.slice(inicio, inicio + 450).forEach((produto) => {
+        lote.set(firebaseDb.collection("produtos").doc(produto.id), removerCamposIndefinidos({
+          ...produto,
+          atualizadoEm: new Date().toISOString(),
+          atualizadoPor: email
+        }));
+      });
+      await lote.commit();
+    }
+
+    const categoriasRef = firebaseDb.collection("config").doc("categorias");
+    const categoriasSalvas = await categoriasRef.get();
+    const categorias = new Set(categoriasSalvas.exists && Array.isArray(categoriasSalvas.data().nomes)
+      ? categoriasSalvas.data().nomes
+      : []);
+    catalogoAtual.forEach((produto) => {
+      const categoria = String(produto.categoria || "").trim();
+      if (categoria) categorias.add(categoria);
+    });
+    await gravarConfiguracaoCompartilhada("categorias", { nomes: [...categorias].sort((a, b) => a.localeCompare(b, "pt-BR")) });
+
+    if (incluirGelos) {
+      const gelo = catalogoAtual.find((produto) => produto.id === "gelo-copao");
+      if (gelo) await gravarConfiguracaoCompartilhada("gelos", dadosConfiguracaoGelos(gelo));
+    }
+    salvarCacheProdutos(catalogoAtual);
+  }
+
+  async function salvarProduto(produto) {
     const produtos = buscarProdutos();
-    const id = produto.id || gerarId("produto");
+    const id = produto.id || gerarIdProduto(produto.nome, produtos);
     const indice = produtos.findIndex((item) => item.id === id);
     const existente = indice < 0 ? null : produtos[indice];
     const variantes = (produto.variantes || []).map((variante, indiceVariante) => normalizarVariante(variante, id, indiceVariante));
@@ -1185,11 +1507,13 @@
       throw new Error("Escolha o tipo de bebida para habilitar a montagem de copão.");
     }
 
+    const categoriaProduto = String(produto.categoria || "").trim();
+    if (!categoriaProduto) throw new Error("Informe a categoria do produto.");
     const novo = sincronizarCamposLegados({
       ...(existente || {}),
       id,
       nome: String(produto.nome || "").trim(),
-      categoria: produto.categoria,
+      categoria: categoriaProduto,
       ativo: produto.ativo === undefined ? !existente || existente.ativo !== false : produto.ativo !== false,
       permiteCopao,
       tipoBebida: permiteCopao ? tipoBebida : "",
@@ -1200,17 +1524,22 @@
       exemplo: false
     });
     if (!novo.nome) throw new Error("Informe o nome do produto.");
-    if (indice < 0) produtos.push(novo);
-    else produtos[indice] = novo;
-    salvarProdutos(produtos);
+    const catalogoAtual = [...produtos];
+    if (indice < 0) catalogoAtual.push(novo);
+    else catalogoAtual[indice] = novo;
+    if (FIREBASE_CONFIGURADO) {
+      await gravarProdutosCompartilhados([novo], catalogoAtual, id === "gelo-copao");
+    } else {
+      salvarProdutos(catalogoAtual);
+    }
     return novo;
   }
 
-  function atualizarEstoqueVariante(produtoId, varianteId, estoque) {
+  async function atualizarEstoqueVariante(produtoId, varianteId, estoque) {
     return atualizarQuantidadeVariante(produtoId, varianteId, { estoque });
   }
 
-  function atualizarQuantidadeVariante(produtoId, varianteId, quantidade) {
+  async function atualizarQuantidadeVariante(produtoId, varianteId, quantidade) {
     const produtos = buscarProdutos();
     const produto = produtos.find((item) => item.id === produtoId);
     if (!produto) throw new Error("O produto não foi encontrado.");
@@ -1238,7 +1567,11 @@
       dose.estoque = Math.max(0, garrafa.estoque * DOSES_POR_GARRAFA - garrafa.dosesVendidas);
     }
 
-    salvarProdutos(produtos);
+    if (FIREBASE_CONFIGURADO) {
+      await gravarProdutosCompartilhados([produto], produtos, produto.id === "gelo-copao");
+    } else {
+      salvarProdutos(produtos);
+    }
     return produto;
   }
 
@@ -1334,11 +1667,176 @@
       : estoqueBase;
   }
 
-  function removerProduto(id) {
+  async function removerProduto(id) {
     const produtos = buscarProdutos();
     const existe = produtos.some((produto) => produto.id === id);
     if (!existe) throw new Error("Não encontramos este produto.");
-    salvarProdutos(produtos.filter((produto) => produto.id !== id));
+    const restantes = produtos.filter((produto) => produto.id !== id);
+    if (FIREBASE_CONFIGURADO) {
+      emailGestorAtual();
+      await firebaseDb.collection("produtos").doc(id).delete();
+      const categorias = [...new Set(restantes.map((produto) => String(produto.categoria || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+      await gravarConfiguracaoCompartilhada("categorias", { nomes: categorias });
+      if (id === "gelo-copao") {
+        await firebaseDb.collection("config").doc("gelos").delete();
+        localStorage.removeItem(CHAVE_GELOS_CATALOGO);
+      }
+    }
+    salvarProdutos(restantes);
+  }
+
+  async function salvarProdutosEmLote(produtosAtualizados) {
+    const normalizados = produtosAtualizados.map(normalizarProduto);
+    const catalogo = new Map(buscarProdutos().map((produto) => [produto.id, produto]));
+    normalizados.forEach((produto) => catalogo.set(produto.id, produto));
+    const catalogoFinal = [...catalogo.values()];
+    if (!FIREBASE_CONFIGURADO) {
+      salvarProdutos(catalogoFinal);
+      return catalogoFinal;
+    }
+    await gravarProdutosCompartilhados(normalizados, catalogoFinal, normalizados.some((produto) => produto.id === "gelo-copao"));
+    return catalogoFinal;
+  }
+
+  function catalogoInicialCompleto() {
+    const produtos = [...produtosExemplo, ...produtosCatalogoInicial, ...produtosCatalogoExpandido, produtoGeloCopaoInicial];
+    return [...new Map(produtos.map((produto) => [produto.id, normalizarProduto(produto)])).values()];
+  }
+
+  async function publicarCatalogoInicial() {
+    if (!FIREBASE_CONFIGURADO) throw new Error("Configure o Firebase antes de publicar o catálogo inicial.");
+    const email = emailGestorAtual();
+    const snapshot = await firebaseDb.collection("produtos").get();
+    const existentes = new Set(snapshot.docs.map((documento) => documento.id));
+    const catalogoLocal = buscarProdutos();
+    const baseInicial = catalogoInicialCompleto();
+    const atuaisPorId = new Map(catalogoLocal.map((produto) => [produto.id, produto]));
+    const novos = baseInicial
+      .filter((produto) => !existentes.has(produto.id))
+      .map((produto) => atuaisPorId.get(produto.id) || produto);
+    const catalogoFinal = [...catalogoLocal];
+    novos.forEach((produto) => {
+      if (!catalogoFinal.some((atual) => atual.id === produto.id)) catalogoFinal.push(produto);
+    });
+    await gravarProdutosCompartilhados(novos, catalogoFinal, novos.some((produto) => produto.id === "gelo-copao"));
+
+    const configuracoesPadrao = [
+      ["medidas", obterMedidasLoja()],
+      ["horario", { dataEstendida: null }],
+      ["categorias", { nomes: [...new Set(catalogoFinal.map((produto) => produto.categoria).filter(Boolean))] }],
+      ["gelos", dadosConfiguracaoGelos(catalogoFinal.find((produto) => produto.id === "gelo-copao") || produtoGeloCopaoInicial)]
+    ];
+    for (let inicio = 0; inicio < configuracoesPadrao.length; inicio += 1) {
+      const [id, dados] = configuracoesPadrao[inicio];
+      const referencia = firebaseDb.collection("config").doc(id);
+      const existente = await referencia.get();
+      if (existente.exists) continue;
+      const atualizado = {
+        ...dados,
+        atualizadoEm: new Date().toISOString(),
+        atualizadoPor: email
+      };
+      await referencia.set(atualizado);
+      if (id === "medidas") salvarCacheConfiguracao(CHAVE_MEDIDAS_LOJA, atualizado);
+      if (id === "horario") localStorage.removeItem(CHAVE_HORARIO_ESTENDIDO);
+      if (id === "categorias") salvarCacheConfiguracao(CHAVE_CATEGORIAS_CATALOGO, atualizado);
+      if (id === "gelos") salvarCacheConfiguracao(CHAVE_GELOS_CATALOGO, atualizado);
+    }
+    return novos.length;
+  }
+
+  function exportarCatalogo() {
+    return {
+      versao: 1,
+      exportadoEm: new Date().toISOString(),
+      produtos: buscarProdutos(),
+      config: {
+        gelos: lerListaOpcional(CHAVE_GELOS_CATALOGO),
+        medidas: obterMedidasLoja(),
+        horario: { dataEstendida: localStorage.getItem(CHAVE_HORARIO_ESTENDIDO) },
+        categorias: lerListaOpcional(CHAVE_CATEGORIAS_CATALOGO)
+      }
+    };
+  }
+
+  async function previsualizarImportacaoCatalogo(backup) {
+    if (FIREBASE_CONFIGURADO) exigirFirebase();
+    const produtos = Array.isArray(backup) ? backup : backup && backup.produtos;
+    if (!Array.isArray(produtos)) throw new Error("O arquivo não contém uma lista de produtos válida.");
+    const ids = new Set();
+    const normalizados = produtos.map((produto) => {
+      const normalizado = normalizarProduto(produto);
+      if (ids.has(normalizado.id)) throw new Error(`O arquivo contém o produto duplicado ${normalizado.id}.`);
+      ids.add(normalizado.id);
+      return normalizado;
+    });
+    const idsExistentes = FIREBASE_CONFIGURADO
+      ? (await firebaseDb.collection("produtos").get()).docs.map((documento) => documento.id)
+      : buscarProdutos().map((produto) => produto.id);
+    const existentes = new Set(idsExistentes);
+    const config = backup && !Array.isArray(backup) ? backup.config || {} : {};
+    if (config.gelos && (!Array.isArray(config.gelos.sabores) || config.gelos.sabores.some((sabor) => {
+      return !sabor.id || !String(sabor.nome || "").trim() || /[<>]/.test(String(sabor.nome))
+        || !Number.isInteger(Number(sabor.estoque)) || Number(sabor.estoque) < 0
+        || !Number.isInteger(Number(sabor.minimo)) || Number(sabor.minimo) < 0
+        || (sabor.precoAdicional !== null && sabor.precoAdicional !== undefined
+          && (!Number.isFinite(Number(sabor.precoAdicional)) || Number(sabor.precoAdicional) < 0));
+    }))) throw new Error("O backup contém sabores de gelo com dados inválidos.");
+    if (config.categorias && (!Array.isArray(config.categorias.nomes)
+      || config.categorias.nomes.some((nome) => typeof nome !== "string" || !nome.trim() || /[<>]/.test(nome)))) {
+      throw new Error("O backup contém categorias inválidas.");
+    }
+    if (config.medidas) {
+      const medidas = config.medidas;
+      if (!Number.isInteger(Number(medidas.copao && medidas.copao.tamanhoCopoMl))
+        || Number(medidas.copao.tamanhoCopoMl) < 1
+        || !Number.isInteger(Number(medidas.dose && medidas.dose.tamanhoCopoMl))
+        || Number(medidas.dose.tamanhoCopoMl) < 1
+        || (medidas.copao.bebidaNoCopaoMl !== null && medidas.copao.bebidaNoCopaoMl !== undefined
+          && (!Number.isInteger(Number(medidas.copao.bebidaNoCopaoMl)) || Number(medidas.copao.bebidaNoCopaoMl) < 1))) {
+        throw new Error("O backup contém medidas da loja inválidas.");
+      }
+    }
+    if (config.horario && config.horario.dataEstendida !== null
+      && !/^\d{4}-\d{2}-\d{2}$/.test(String(config.horario.dataEstendida || ""))) {
+      throw new Error("O backup contém uma data de horário estendido inválida.");
+    }
+    return {
+      produtos: normalizados,
+      criar: normalizados.filter((produto) => !existentes.has(produto.id)).length,
+      atualizar: normalizados.filter((produto) => existentes.has(produto.id)).length,
+      config
+    };
+  }
+
+  async function importarCatalogo(backup) {
+    const previsualizacao = await previsualizarImportacaoCatalogo(backup);
+    const atual = buscarProdutos();
+    const porId = new Map(atual.map((produto) => [produto.id, produto]));
+    previsualizacao.produtos.forEach((produto) => porId.set(produto.id, produto));
+    const catalogoFinal = [...porId.values()];
+    if (!FIREBASE_CONFIGURADO) {
+      salvarProdutos(catalogoFinal);
+      if (previsualizacao.config.medidas) salvarCacheConfiguracao(CHAVE_MEDIDAS_LOJA, previsualizacao.config.medidas);
+      if (previsualizacao.config.gelos) salvarCacheConfiguracao(CHAVE_GELOS_CATALOGO, previsualizacao.config.gelos);
+      if (previsualizacao.config.categorias) salvarCacheConfiguracao(CHAVE_CATEGORIAS_CATALOGO, previsualizacao.config.categorias);
+      if (previsualizacao.config.horario) {
+        if (previsualizacao.config.horario.dataEstendida) {
+          localStorage.setItem(CHAVE_HORARIO_ESTENDIDO, previsualizacao.config.horario.dataEstendida);
+        } else {
+          localStorage.removeItem(CHAVE_HORARIO_ESTENDIDO);
+        }
+      }
+      return previsualizacao;
+    }
+    await gravarProdutosCompartilhados(previsualizacao.produtos, catalogoFinal, previsualizacao.produtos.some((produto) => produto.id === "gelo-copao"));
+    const configuracoes = previsualizacao.config;
+    if (configuracoes.medidas) await gravarConfiguracaoCompartilhada("medidas", configuracoes.medidas);
+    if (configuracoes.gelos) await gravarConfiguracaoCompartilhada("gelos", configuracoes.gelos);
+    if (configuracoes.horario) await gravarConfiguracaoCompartilhada("horario", configuracoes.horario);
+    if (configuracoes.categorias) await gravarConfiguracaoCompartilhada("categorias", configuracoes.categorias);
+    return previsualizacao;
   }
 
   function buscarPedidos() {
@@ -1395,7 +1893,7 @@
         variante: gelo ? `${variante.nome} · gelo ${gelo.nome}` : variante.nome,
         ...(gelo ? { geloProdutoId: item.geloProdutoId, geloVarianteId: gelo.id, saborGelo: gelo.nome } : {}),
         quantidade,
-        precoUnitario: variante.preco
+        precoUnitario: variante.preco + (gelo ? Number(gelo.precoAdicional) || 0 : 0)
       };
     });
 
@@ -1409,11 +1907,16 @@
       criadoEm: new Date().toISOString(),
       exemplo: false
     };
-    const estoqueAtualizado = alterarEstoquePedido(produtos, itens, -1);
-    salvarTransacao({
-      [CHAVES.produtos]: estoqueAtualizado,
-      [CHAVES.pedidos]: [...buscarPedidos(), novoPedido]
-    });
+    // No modo compartilhado, clientes apenas registram pedidos; o estoque remoto é alterado pelo gestor.
+    if (FIREBASE_CONFIGURADO) {
+      salvarLista(CHAVES.pedidos, [...buscarPedidos(), novoPedido]);
+    } else {
+      const estoqueAtualizado = alterarEstoquePedido(produtos, itens, -1);
+      salvarTransacao({
+        [CHAVES.produtos]: estoqueAtualizado,
+        [CHAVES.pedidos]: [...buscarPedidos(), novoPedido]
+      });
+    }
     return novoPedido;
   }
 
@@ -1436,17 +1939,18 @@
     }
 
     let estoque;
-    if (novoStatus === "Cancelado" && pedido.status !== "Cancelado") {
+    if (!FIREBASE_CONFIGURADO && novoStatus === "Cancelado" && pedido.status !== "Cancelado") {
       estoque = alterarEstoquePedido(buscarProdutos(), pedido.itens, 1);
     }
     pedidos[indice] = { ...pedido, status: novoStatus };
-    salvarTransacao(novoStatus === "Cancelado"
+    salvarTransacao(!FIREBASE_CONFIGURADO && novoStatus === "Cancelado"
       ? { [CHAVES.produtos]: estoque, [CHAVES.pedidos]: pedidos }
       : { [CHAVES.pedidos]: pedidos });
     return pedidos[indice];
   }
 
   function restaurarEstoquePedido(pedido) {
+    if (FIREBASE_CONFIGURADO) return buscarProdutos();
     const estoque = alterarEstoquePedido(buscarProdutos(), pedido.itens, 1);
     salvarProdutos(estoque);
   }
@@ -1456,6 +1960,10 @@
   }
 
   function temSessaoGestor() {
+    if (FIREBASE_CONFIGURADO) {
+      const email = firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.email;
+      return Boolean(email && email.toLowerCase() === String(CONFIGURACAO_FIREBASE.managerEmail || "").trim().toLowerCase());
+    }
     const conteudo = localStorage.getItem(CHAVES.sessaoGestor);
     if (!conteudo) return false;
     try {
@@ -1465,7 +1973,39 @@
     }
   }
 
-  function encerrarSessaoGestor() {
+  function aguardarSessaoGestor() {
+    if (!FIREBASE_CONFIGURADO) return Promise.resolve(temSessaoGestor() ? { modoLocal: true } : null);
+    if (!firebaseEstaDisponivel()) return Promise.reject(new Error("O Firebase Authentication não está disponível."));
+    return new Promise((resolve) => {
+      let cancelar = () => {};
+      cancelar = firebaseAuth.onAuthStateChanged((usuario) => {
+        cancelar();
+        const email = usuario && usuario.email;
+        const autorizado = email
+          && email.toLowerCase() === String(CONFIGURACAO_FIREBASE.managerEmail || "").trim().toLowerCase();
+        resolve(autorizado ? usuario : null);
+      }, (erro) => {
+        cancelar();
+        console.error("Falha ao verificar a sessão do gestor.", erro);
+        resolve(null);
+      });
+    });
+  }
+
+  async function autenticarGestor(email, senha) {
+    exigirFirebase();
+    const emailAutorizado = String(CONFIGURACAO_FIREBASE.managerEmail || "").trim().toLowerCase();
+    if (!emailAutorizado) throw new Error("Preencha managerEmail em firebase-config.js com o e-mail autorizado para o gestor.");
+    const credencial = await firebaseAuth.signInWithEmailAndPassword(String(email || "").trim(), senha);
+    if (!credencial.user.email || credencial.user.email.toLowerCase() !== emailAutorizado) {
+      await firebaseAuth.signOut();
+      throw new Error("Esta conta não está autorizada como gestor.");
+    }
+    return credencial.user;
+  }
+
+  async function encerrarSessaoGestor() {
+    if (FIREBASE_CONFIGURADO && firebaseAuth) await firebaseAuth.signOut();
     localStorage.removeItem(CHAVES.sessaoGestor);
   }
 
@@ -1506,6 +2046,10 @@
   }
 
   function obterCategoriasProdutos() {
+    const categoriasSalvas = lerListaOpcional(CHAVE_CATEGORIAS_CATALOGO);
+    if (FIREBASE_CONFIGURADO && categoriasSalvas && Array.isArray(categoriasSalvas.nomes)) {
+      return [...categoriasSalvas.nomes].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    }
     return [...new Set(buscarProdutos()
       .map((produto) => String(produto.categoria || "").trim())
       .filter(Boolean))]
@@ -1643,6 +2187,12 @@
 
   window.MyDrinkStorage = {
     statusPedido: STATUS_PEDIDO,
+    firebaseEstaConfigurado,
+    firebaseEstaDisponivel,
+    ouvirCatalogo,
+    ultimaSincronizacaoCatalogo,
+    aguardarSessaoGestor,
+    autenticarGestor,
     obterConfiguracaoLoja,
     obterStatusFuncionamento,
     definirHorarioEstendidoHoje,
@@ -1666,6 +2216,11 @@
     obterMedidasLoja,
     salvarMedidasLoja,
     salvarProduto,
+    salvarProdutosEmLote,
+    publicarCatalogoInicial,
+    exportarCatalogo,
+    previsualizarImportacaoCatalogo,
+    importarCatalogo,
     atualizarEstoqueVariante,
     atualizarQuantidadeVariante,
     removerProduto,

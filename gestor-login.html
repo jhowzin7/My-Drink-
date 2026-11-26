@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Acesso demonstrativo à área do gestor da My Drink.">
   <title>Área do gestor | My Drink</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="storage.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,18 +37,18 @@
         <div class="section-heading">
           <p class="eyebrow">Acesso restrito</p>
           <h1 class="page-title" id="manager-login-title">Área do gestor</h1>
-          <p>Entre para administrar pedidos e estoque de demonstração.</p>
+          <p>Entre para administrar pedidos e o catálogo da loja.</p>
         </div>
         <div class="auth-card">
           <form id="manager-login-form" novalidate>
-            <label for="manager-user">Usuário</label>
-            <input id="manager-user" name="user" autocomplete="username" required aria-describedby="manager-login-message">
+            <label for="manager-user" id="manager-user-label">E-mail do gestor</label>
+            <input id="manager-user" name="user" type="email" autocomplete="username" required aria-describedby="manager-login-message">
             <label for="manager-password">Senha</label>
             <input id="manager-password" name="password" type="password" autocomplete="current-password" required aria-describedby="manager-login-message">
             <p class="form-message" id="manager-login-message" role="alert" aria-live="polite"></p>
             <button class="button button-primary form-submit" type="submit">Entrar como gestor</button>
           </form>
-          <p class="demo-notice">Credenciais fixas no JavaScript apenas para a apresentação escolar; não use este modelo como segurança real.</p>
+          <p class="demo-notice" id="manager-mode-notice" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>

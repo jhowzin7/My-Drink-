@@ -39,6 +39,7 @@ const BLOQUEAR_PEDIDO_FECHADO = false;
   const catalogOnlyAvailable = document.querySelector("#catalog-only-available");
   const ageConfirmation = document.querySelector("#age-confirmation");
   const ageConfirmed = document.querySelector("#age-confirmed");
+  const catalogSyncStatus = document.querySelector("#catalog-sync-status");
   const selecao = new Map();
   const selecaoCopao = new Map();
   const variantesSelecionadas = new Map();
@@ -285,7 +286,9 @@ const BLOQUEAR_PEDIDO_FECHADO = false;
 
   function configurarFiltrosCatalogo() {
     if (!catalogCategoryButtons) return;
-    const categorias = ["Todas", ...storage.obterCategoriasProdutos()];
+    const categoriasDisponiveis = storage.obterCategoriasProdutos();
+    if (categoriaCatalogo !== "Todas" && !categoriasDisponiveis.includes(categoriaCatalogo)) categoriaCatalogo = "Todas";
+    const categorias = ["Todas", ...categoriasDisponiveis];
     catalogCategoryButtons.replaceChildren();
     categorias.forEach((categoria) => {
       const botao = criarNo("button", categoria, "catalog-category-button");
@@ -341,12 +344,15 @@ const BLOQUEAR_PEDIDO_FECHADO = false;
       return;
     }
 
-    const preco = precoValido ? formatarMoeda(selecaoAtual.variante.preco) : "[PREÇO A CONFIRMAR]";
+    const precoAdicional = Number(selecaoAtual.varianteGelo.precoAdicional) || 0;
+    const precoCopao = precoValido ? selecaoAtual.variante.preco + precoAdicional : null;
+    const preco = precoValido ? formatarMoeda(precoCopao) : "[PREÇO A CONFIRMAR]";
+    const adicionalTexto = precoAdicional > 0 ? ` (adicional do sabor: ${formatarMoeda(precoAdicional)})` : "";
     const iconeTipo = (tiposBebida[selecaoAtual.produto.tipoBebida] || tiposBebida.outro).icone;
     const medidas = storage.obterMedidasLoja();
     const resumoMedidas = `Copão de ${medidas.copao.tamanhoCopoMl} ml · energético ${medidas.copao.energeticoIncluso ? "incluso" : "opcional"}`;
     copaoPreview.textContent = disponivel > 0
-      ? `${iconeTipo} ${selecaoAtual.produto.nome} com gelo de ${selecaoAtual.varianteGelo.nome} · ${resumoMedidas} · ${preco} por copão · ${disponivel} disponível(is)`
+      ? `${iconeTipo} ${selecaoAtual.produto.nome} com gelo de ${selecaoAtual.varianteGelo.nome} · ${resumoMedidas} · ${preco}${adicionalTexto} por copão · ${disponivel} disponível(is)`
       : `${selecaoAtual.produto.nome} com gelo de ${selecaoAtual.varianteGelo.nome} · Indisponível`;
   }
 
@@ -488,7 +494,10 @@ const BLOQUEAR_PEDIDO_FECHADO = false;
       totalElemento.textContent = "Total: [PREÇO A CONFIRMAR]";
       return;
     }
-    const total = itensSelecionados.reduce((soma, item) => soma + item.variante.preco * item.quantidade, 0);
+    const total = itensSelecionados.reduce((soma, item) => {
+      const adicionalGelo = item.gelo ? Number(item.gelo.precoAdicional) || 0 : 0;
+      return soma + (item.variante.preco + adicionalGelo) * item.quantidade;
+    }, 0);
     totalElemento.textContent = `Total: ${formatarMoeda(total)}`;
   }
 
@@ -643,6 +652,16 @@ const BLOQUEAR_PEDIDO_FECHADO = false;
     window.setInterval(atualizarAvisoHorario, 60_000);
     configurarFiltrosCatalogo();
     mostrarCatalogo();
+    storage.ouvirCatalogo(() => {
+      configurarFiltrosCatalogo();
+      mostrarCatalogo();
+      atualizarAvisoHorario();
+    }, (estado) => {
+      if (catalogSyncStatus) {
+        catalogSyncStatus.textContent = estado.mensagem
+          || (estado.status === "online" ? "Catálogo online" : "Carregando catálogo...");
+      }
+    });
   } catch (erro) {
     catalogo.textContent = erro.message || "Não foi possível carregar o catálogo.";
   }

@@ -239,3 +239,55 @@ atualizarSelosFuncionamento();
 if (document.querySelector("[data-opening-status]")) {
   window.setInterval(atualizarSelosFuncionamento, 60_000);
 }
+
+const catalogoInicio = document.querySelector("#home-live-catalog");
+const statusCatalogoInicio = document.querySelector("#home-catalog-status");
+if (catalogoInicio && statusCatalogoInicio && window.MyDrinkStorage) {
+  const formatarPreco = (valor) => valor === null || !Number.isFinite(Number(valor))
+    ? "[PREÇO A CONFIRMAR]"
+    : Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  window.MyDrinkStorage.ouvirCatalogo((produtos) => {
+    atualizarSelosFuncionamento();
+    catalogoInicio.replaceChildren();
+    const destaques = produtos
+      .filter((produto) => produto.ativo !== false)
+      .sort((a, b) => String(b.atualizadoEm || "").localeCompare(String(a.atualizadoEm || ""))
+        || a.nome.localeCompare(b.nome, "pt-BR"))
+      .slice(0, 8);
+    if (!destaques.length) {
+      const vazio = document.createElement("p");
+      vazio.className = "empty-state";
+      vazio.textContent = "Nenhum produto publicado no catálogo neste momento.";
+      catalogoInicio.append(vazio);
+      return;
+    }
+
+    destaques.forEach((produto) => {
+      const variante = produto.variantes.find((item) => item.ativo !== false && item.estoque > 0)
+        || produto.variantes.find((item) => item.ativo !== false)
+        || produto.variantes[0];
+      const cartao = document.createElement("article");
+      cartao.className = "home-live-catalog-card";
+      const categoria = document.createElement("span");
+      categoria.className = "catalog-category";
+      categoria.textContent = produto.categoria;
+      const nome = document.createElement("h4");
+      nome.textContent = produto.nome;
+      const preco = document.createElement("p");
+      preco.textContent = variante ? `${variante.nome}: ${formatarPreco(variante.preco)}` : "[PREÇO A CONFIRMAR]";
+      const situacao = document.createElement("span");
+      const disponivel = produto.ativo !== false && variante && variante.ativo !== false && variante.estoque > 0;
+      situacao.className = disponivel ? "stock-label" : "stock-label is-empty";
+      situacao.textContent = disponivel ? `Disponível: ${variante.estoque}` : "Indisponível";
+      cartao.append(categoria, nome, preco, situacao);
+      catalogoInicio.append(cartao);
+    });
+  }, (estado) => {
+    statusCatalogoInicio.textContent = estado.mensagem
+      || (estado.status === "online" ? "Catálogo online" : "Carregando catálogo...");
+    if (estado.status === "online" && estado.ultimaSincronizacao) {
+      statusCatalogoInicio.textContent += ` · Atualizado às ${new Date(estado.ultimaSincronizacao).toLocaleTimeString("pt-BR")}`;
+    }
+  });
+}

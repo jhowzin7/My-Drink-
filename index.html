@@ -7,6 +7,10 @@
   <meta name="theme-color" content="#111111">
   <title>My Drink | Preço de Fábrica</title>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="storage.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,6 +117,16 @@
             </div>
           </article>
         </div>
+        <section class="home-live-catalog" aria-labelledby="home-live-catalog-title">
+          <div class="panel-heading">
+            <div>
+              <h3 id="home-live-catalog-title">Disponíveis agora</h3>
+              <p id="home-catalog-status" class="catalog-sync-status" role="status" aria-live="polite">Carregando catálogo...</p>
+            </div>
+            <a class="button button-outline order-link" href="pedido.html">Ver catálogo completo</a>
+          </div>
+          <div class="home-live-catalog-grid" id="home-live-catalog"></div>
+        </section>
       </div>
     </section>
 
@@ -143,8 +157,8 @@
           <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto do interior da My Drink">
             <span class="image-frame"><img src="images/galeria-interior.jpeg" alt="Interior da My Drink com geladeiras de bebidas e balcão refrigerado"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
           </button>
-          <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto repetida do interior da My Drink">
-            <span class="image-frame"><img src="images/galeria-interior.jpeg" alt="Foto repetida do interior da My Drink"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
+          <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto da prateleira e do letreiro de açaí">
+            <span class="image-frame"><img src="images/galeria-prateleira.jpeg" alt="Prateleira com produtos e letreiro de açaí na My Drink"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
           </button>
         </div>
       </div>

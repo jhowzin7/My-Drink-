@@ -5,14 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Painel administrativo demonstrativo da My Drink.">
   <title>Painel do gestor | My Drink</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="storage.js"></script>
-  <script>
-    try {
-      if (!MyDrinkStorage.temSessaoGestor()) window.location.replace("gestor-login.html");
-    } catch (erro) {
-      window.location.replace("gestor-login.html");
-    }
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -35,18 +32,26 @@
     </nav>
   </header>
 
-  <main class="page-main manager-main">
+  <main class="page-main manager-main" id="manager-dashboard" hidden>
     <section class="section section-light" aria-labelledby="manager-title">
       <div class="container">
         <div class="manager-heading">
           <div>
-            <p class="eyebrow">Administração local</p>
+            <p class="eyebrow">Administração da loja</p>
             <h1 class="page-title" id="manager-title">Painel do gestor</h1>
           </div>
           <button class="button button-secondary" id="restore-demo-data" type="button">Restaurar dados de exemplo</button>
         </div>
 
         <div class="manager-message" id="manager-message" role="status" aria-live="polite"></div>
+        <p class="catalog-connection" id="catalog-connection" role="status" aria-live="polite">Carregando catálogo...</p>
+        <p class="demo-notice" id="local-mode-notice" hidden>Modo local: as alterações não são compartilhadas com os visitantes.</p>
+        <div class="button-row catalog-tools">
+          <button class="button button-secondary" id="publish-initial-catalog" type="button">Publicar catálogo inicial</button>
+          <button class="button button-outline" id="export-catalog" type="button">Exportar catálogo (backup em JSON)</button>
+          <button class="button button-outline" id="import-catalog" type="button">Importar catálogo</button>
+          <input id="import-catalog-file" type="file" accept="application/json,.json" hidden aria-label="Arquivo JSON de catálogo">
+        </div>
         <div class="manager-tabs" role="tablist" aria-label="Seções do painel">
           <button class="manager-tab is-active" id="tab-overview" type="button" role="tab" tabindex="0" aria-selected="true" aria-controls="panel-overview" data-manager-tab="overview">Resumo</button>
           <button class="manager-tab" id="tab-orders" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-orders" data-manager-tab="orders">Pedidos</button>

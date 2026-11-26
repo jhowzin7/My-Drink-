@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function gestorAutorizado() {
+      return request.auth != null
+        && request.auth.token.email == "[EMAIL_DO_GESTOR]";
+    }
+
+    match /produtos/{produtoId} {
+      allow read: if true;
+      allow create, update, delete: if gestorAutorizado();
+    }
+
+    match /config/{configId} {
+      allow read: if true;
+      allow create, update, delete: if gestorAutorizado();
+    }
+
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}
