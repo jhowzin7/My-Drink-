@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Acesso demonstrativo à área do gestor da My Drink.">
+  <title>Área do gestor | My Drink</title>
+  <script src="storage.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script src="gestor.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação principal">
+      <a class="brand" href="index.html">My<span>Drink</span></a>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="manager-login-nav">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="manager-login-nav">
+        <li><a href="index.html">Voltar ao site</a></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-main">
+    <section class="section section-light" aria-labelledby="manager-login-title">
+      <div class="container auth-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Acesso restrito</p>
+          <h1 class="page-title" id="manager-login-title">Área do gestor</h1>
+          <p>Entre para administrar pedidos e estoque de demonstração.</p>
+        </div>
+        <div class="auth-card">
+          <form id="manager-login-form" novalidate>
+            <label for="manager-user">Usuário</label>
+            <input id="manager-user" name="user" autocomplete="username" required aria-describedby="manager-login-message">
+            <label for="manager-password">Senha</label>
+            <input id="manager-password" name="password" type="password" autocomplete="current-password" required aria-describedby="manager-login-message">
+            <p class="form-message" id="manager-login-message" role="alert" aria-live="polite"></p>
+            <button class="button button-primary form-submit" type="submit">Entrar como gestor</button>
+          </form>
+          <p class="demo-notice">Credenciais fixas no JavaScript apenas para a apresentação escolar; não use este modelo como segurança real.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="index.html">My<span>Drink</span></a>
+      <p class="copyright">Área administrativa demonstrativa.</p>
+    </div>
+  </footer>
+</body>
+</html>

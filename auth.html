@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Entre ou crie sua conta My Drink.">
+  <title>Entrar ou criar conta | My Drink</title>
+  <script src="storage.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script src="auth.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação principal">
+      <a class="brand" href="index.html" aria-label="My Drink - início">My<span>Drink</span></a>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu-principal">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="menu-principal">
+        <li><a href="index.html">Início</a></li>
+        <li><a class="order-link" href="pedido.html">Monte seu pedido</a></li>
+        <li data-customer-menu></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-main">
+    <section class="section section-light" aria-labelledby="auth-title">
+      <div class="container auth-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Bem-vindo à My Drink</p>
+          <h1 class="page-title" id="auth-title">Acesse sua conta</h1>
+          <p>Entre ou crie uma conta para montar seu pedido.</p>
+        </div>
+
+        <div class="auth-card">
+          <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
+            <button class="auth-tab is-active" id="tab-login" type="button" role="tab" tabindex="0" aria-selected="true" aria-controls="panel-login">Entrar</button>
+            <button class="auth-tab" id="tab-register" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-register">Criar conta</button>
+          </div>
+
+          <section class="auth-panel" id="panel-login" role="tabpanel" aria-labelledby="tab-login">
+            <form id="login-form" novalidate>
+              <label for="login-credential">Nome de usuário, e-mail ou CPF</label>
+              <input id="login-credential" name="credential" autocomplete="username" required aria-describedby="login-error">
+              <label for="login-password">Senha</label>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" required aria-describedby="login-error">
+              <p class="form-message" id="login-error" role="alert" aria-live="polite"></p>
+              <button class="button button-primary form-submit" type="submit">Entrar</button>
+            </form>
+          </section>
+
+          <section class="auth-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" hidden>
+            <form id="register-form" novalidate>
+              <label for="register-name">Nome completo</label>
+              <input id="register-name" name="name" autocomplete="name" required aria-describedby="register-error">
+              <label for="register-username">Nome de usuário</label>
+              <input id="register-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9._-]{3,24}" required aria-describedby="register-username-help register-error">
+              <p class="field-help" id="register-username-help">Use de 3 a 24 letras sem acento, números, ponto, hífen ou sublinhado. Você poderá entrar com esse nome.</p>
+              <label for="register-cpf">CPF</label>
+              <input id="register-cpf" name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14" required aria-describedby="register-error">
+              <label for="register-phone">Telefone / WhatsApp</label>
+              <input id="register-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" maxlength="15" required aria-describedby="register-error">
+              <label for="register-email">E-mail</label>
+              <input id="register-email" name="email" type="email" autocomplete="email" required aria-describedby="register-error">
+              <label for="register-birthdate">Data de nascimento</label>
+              <input id="register-birthdate" name="birthdate" type="date" autocomplete="bday" required aria-describedby="register-error">
+              <label for="register-password">Senha (mínimo 6 caracteres)</label>
+              <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="6" required aria-describedby="register-error">
+              <label for="register-confirm">Confirme a senha</label>
+              <input id="register-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required aria-describedby="register-error">
+              <p class="form-message" id="register-error" role="alert" aria-live="polite"></p>
+              <button class="button button-primary form-submit" type="submit">Criar conta</button>
+            </form>
+          </section>
+          <p class="demo-notice">Esta conta é demonstrativa e fica salva somente neste navegador.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="index.html">My<span>Drink</span></a>
+      <p class="copyright">© <span id="current-year">2026</span> My Drink. Todos os direitos reservados.</p>
+      <a class="manager-footer-link" href="gestor-login.html">Área do gestor</a>
+    </div>
+  </footer>
+</body>
+</html>

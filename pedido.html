@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Monte seu pedido na My Drink.">
+  <title>Monte seu pedido | My Drink</title>
+  <script src="storage.js"></script>
+  <script>
+    try {
+      if (!MyDrinkStorage.buscarClienteAtual()) window.location.replace("auth.html?retorno=pedido.html");
+    } catch (erro) {
+      window.location.replace("auth.html?retorno=pedido.html");
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script src="pedido.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação principal">
+      <a class="brand" href="index.html" aria-label="My Drink - início">My<span>Drink</span></a>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu-principal">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="menu-principal">
+        <li><a href="index.html">Início</a></li>
+        <li><a href="perfil.html#pedidos">Meus pedidos</a></li>
+        <li data-customer-menu></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-main">
+    <section class="section section-light" aria-labelledby="order-page-title">
+      <div class="container order-page-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Produtos disponíveis</p>
+          <h1 class="page-title" id="order-page-title">Monte seu pedido</h1>
+          <p>As quantidades respeitam o estoque cadastrado pela loja.</p>
+        </div>
+        <aside class="store-info-card" aria-label="Endereço e horário da loja">
+          <p><strong>Endereço:</strong> Avenida JK, 134 – Centro, Betim – MG</p>
+          <p><strong>Horário:</strong> segunda a sábado, 9h às 20h · Domingo: [HORÁRIO DE DOMINGO A CONFIRMAR]</p>
+          <span class="opening-badge store-opening-badge" data-opening-status hidden aria-live="polite"></span>
+          <p class="store-closed-notice" id="store-closed-notice" role="status" hidden>A loja está fechada agora. Seu pedido será atendido quando abrirmos.</p>
+        </aside>
+
+        <section class="copao-builder" aria-labelledby="copao-title">
+          <div class="copao-heading">
+            <p class="eyebrow">Personalize do seu jeito</p>
+            <h2 class="subsection-title" id="copao-title">Monte seu copão</h2>
+            <p>Escolha uma bebida base e um sabor de gelo. O preço é o da apresentação Copão da bebida.</p>
+          </div>
+          <div class="copao-fields">
+            <div>
+              <label for="copao-base">Bebida base</label>
+              <select id="copao-base">
+                <option value="">Selecione uma bebida</option>
+              </select>
+            </div>
+            <div>
+              <label for="copao-ice">Sabor do gelo</label>
+              <select id="copao-ice">
+                <option value="">Selecione um sabor</option>
+              </select>
+            </div>
+          </div>
+          <p class="copao-preview" id="copao-preview" role="status" aria-live="polite">Selecione uma bebida base e um sabor de gelo disponíveis.</p>
+          <div class="copao-actions">
+            <div class="quantity-control" aria-label="Quantidade de copões">
+              <button class="quantity-button" id="copao-minus" type="button" aria-label="Diminuir quantidade de copões" disabled>−</button>
+              <output class="quantity-value" id="copao-quantity" aria-live="polite">1</output>
+              <button class="quantity-button" id="copao-plus" type="button" aria-label="Aumentar quantidade de copões" disabled>+</button>
+            </div>
+            <button class="button button-primary" id="add-copao" type="button" disabled>Adicionar copão ao pedido</button>
+          </div>
+          <p class="copao-feedback" id="copao-feedback" role="status" aria-live="polite"></p>
+        </section>
+
+        <div class="order-page-grid">
+          <section aria-labelledby="catalog-title">
+            <h2 class="subsection-title" id="catalog-title">Catálogo</h2>
+            <p class="field-help">Em destilados, uma garrafa rende 10 doses.</p>
+            <div class="catalog-filters" aria-label="Filtros do catálogo">
+              <label for="catalog-search">Buscar produto</label>
+              <input id="catalog-search" type="search" autocomplete="off" placeholder="Nome do produto">
+              <div class="catalog-category-buttons" id="catalog-category-buttons" aria-label="Categorias"></div>
+              <label class="choice-label" for="catalog-only-available">
+                <input id="catalog-only-available" type="checkbox" checked>
+                Mostrar apenas disponíveis
+              </label>
+            </div>
+            <div class="order-catalog" id="order-catalog" aria-live="polite"></div>
+          </section>
+
+          <form class="checkout-card" id="checkout-form" novalidate>
+            <h2 class="subsection-title">Resumo e finalização</h2>
+            <div class="checkout-summary" id="checkout-summary" aria-live="polite">Selecione produtos para começar.</div>
+            <p class="checkout-total" id="checkout-total" aria-live="polite">Total: R$ 0,00</p>
+
+            <label for="order-notes">Observações (opcional)</label>
+            <textarea id="order-notes" name="notes" rows="3" maxlength="400"></textarea>
+
+            <fieldset>
+              <legend>Como deseja receber?</legend>
+              <label class="choice-label"><input type="radio" name="delivery" value="Retirada na loja" checked> Retirar na loja</label>
+              <label class="choice-label"><input type="radio" name="delivery" value="Entrega"> Entrega</label>
+            </fieldset>
+            <div id="delivery-address-group" hidden>
+              <label for="delivery-address">Endereço para entrega</label>
+              <input id="delivery-address" name="address" autocomplete="street-address" placeholder="Rua, número, bairro e cidade" aria-describedby="checkout-message">
+            </div>
+
+            <fieldset>
+              <legend>Forma de pagamento</legend>
+              <label class="choice-label"><input type="radio" name="payment" value="Pix" checked> Pix</label>
+              <label class="choice-label"><input type="radio" name="payment" value="Cartão"> Cartão</label>
+              <label class="choice-label"><input type="radio" name="payment" value="Dinheiro"> Dinheiro</label>
+            </fieldset>
+
+            <fieldset id="age-confirmation" hidden>
+              <legend>Confirmação de idade</legend>
+              <label class="choice-label" for="age-confirmed">
+                <input id="age-confirmed" type="checkbox" name="ageConfirmed">
+                Confirmo que tenho 18 anos ou mais e aceito beber com moderação.
+              </label>
+              <p class="restricted-product">Venda proibida para menores de 18 anos. Beba com moderação.</p>
+            </fieldset>
+
+            <p class="form-message" id="checkout-message" role="alert" aria-live="polite"></p>
+            <button class="button button-primary form-submit" type="submit">Finalizar pedido</button>
+          </form>
+        </div>
+
+        <section class="order-confirmation" id="order-confirmation" aria-labelledby="confirmation-title" hidden>
+          <div class="confirmation-mark" aria-hidden="true">✓</div>
+          <h2 id="confirmation-title">Pedido recebido!</h2>
+          <p id="confirmation-number"></p>
+          <p id="confirmation-total"></p>
+          <a class="button button-primary" id="confirmation-whatsapp" href="#" target="_blank" rel="noopener noreferrer">Enviar pedido pelo WhatsApp da loja</a>
+          <a class="button button-outline" href="perfil.html#pedidos">Acompanhar meus pedidos</a>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="index.html">My<span>Drink</span></a>
+      <div class="footer-store-info">
+        <p>Avenida JK, 134 – Centro, Betim – MG</p>
+        <p>Segunda a sábado: 9h às 20h · Domingo: [HORÁRIO DE DOMINGO A CONFIRMAR]</p>
+      </div>
+      <p class="copyright">© <span id="current-year">2026</span> My Drink. Todos os direitos reservados.</p>
+      <a class="manager-footer-link" href="gestor-login.html">Área do gestor</a>
+    </div>
+  </footer>
+</body>
+</html>

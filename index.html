@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="My Drink: bebidas, gelos e açaí com preço de fábrica em Betim, MG.">
+  <meta name="theme-color" content="#111111">
+  <title>My Drink | Preço de Fábrica</title>
+
+  <script src="storage.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação principal">
+      <a class="brand" href="#inicio" aria-label="My Drink - início">My<span>Drink</span></a>
+
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu-principal">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <ul class="nav-links" id="menu-principal">
+        <li><a href="#inicio">Início</a></li>
+        <li><a href="#sobre">Sobre</a></li>
+        <li><a href="#produtos">Produtos</a></li>
+        <li><a class="order-link" href="pedido.html">Monte seu pedido</a></li>
+        <li><a href="#galeria">Galeria</a></li>
+        <li><a href="#contato">Contato</a></li>
+        <li><a href="#localizacao">Localização</a></li>
+        <li data-customer-menu></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio" aria-labelledby="hero-title">
+      <div class="container hero-content">
+        <p class="eyebrow">Bebidas, gelos e açaí em Betim</p>
+        <h1 id="hero-title">My Drink</h1>
+        <p class="hero-copy">O que você precisa para curtir bons momentos, em um só lugar.</p>
+        <div class="factory-stamp" aria-label="Preço de Fábrica">
+          <span>Preço de</span>
+          <strong>Fábrica</strong>
+        </div>
+        <a class="button button-primary whatsapp-link" href="#pedido" target="_blank" rel="noopener noreferrer">
+          Fale com a gente
+        </a>
+        <span class="opening-badge" id="opening-status" data-opening-status hidden aria-live="polite"></span>
+      </div>
+    </section>
+
+    <div class="marquee" role="img" aria-label="Bebidas, gelos, açaí e preço de fábrica">
+      <div class="marquee-track">
+        <span>BEBIDAS <b>•</b> GELOS <b>•</b> AÇAÍ <b>•</b> PREÇO DE FÁBRICA <b>•</b></span>
+        <span aria-hidden="true">BEBIDAS <b>•</b> GELOS <b>•</b> AÇAÍ <b>•</b> PREÇO DE FÁBRICA <b>•</b></span>
+      </div>
+    </div>
+
+    <section class="section section-light" id="sobre" aria-labelledby="about-title">
+      <div class="container about-content reveal">
+        <p class="eyebrow">Conheça a loja</p>
+        <h2 id="about-title">Sobre a My Drink</h2>
+        <p>
+          A My Drink é uma loja local de bebidas, gelos e açaí, localizada na Avenida JK, 134,
+          no Centro de Betim – MG. Nosso objetivo é receber você com praticidade
+          e oferecer uma experiência agradável para seus momentos de lazer.
+        </p>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="produtos" aria-labelledby="products-title">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow">O que você encontra</p>
+          <h2 id="products-title">Nossos produtos</h2>
+        </div>
+        <div class="product-grid">
+          <article class="product-card product-card--drinks reveal">
+            <div class="image-frame">
+              <img src="images/bebidas-garrafas.jpeg" alt="Seleção de bebidas e destilados da My Drink">
+              <span class="image-placeholder" aria-hidden="true">Foto em breve</span>
+            </div>
+            <div class="card-copy">
+              <h3>Bebidas</h3>
+              <p>Opções para acompanhar seus encontros e momentos especiais.</p>
+            </div>
+          </article>
+          <article class="product-card product-card--ice reveal">
+            <div class="image-frame">
+              <img src="images/gelos-variedades.jpeg" alt="Variedade de sabores de gelo para drinks">
+              <span class="image-placeholder" aria-hidden="true">Foto em breve</span>
+            </div>
+            <div class="card-copy">
+              <h3>Gelos</h3>
+              <p>Mais praticidade para manter suas bebidas bem geladas.</p>
+            </div>
+          </article>
+          <article class="product-card product-card--acai reveal">
+            <div class="image-frame">
+              <img src="images/galeria-acai.jpeg" alt="Açaí da My Drink servido em frente à loja">
+              <span class="image-placeholder" aria-hidden="true">Foto em breve</span>
+            </div>
+            <div class="card-copy">
+              <h3>Açaí</h3>
+              <p>Uma opção refrescante para deixar o seu dia mais gostoso.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-light order-section" id="pedido" aria-labelledby="order-title">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Prático e do seu jeito</p>
+          <h2 id="order-title">Monte seu pedido</h2>
+          <p>Escolha as categorias e envie sua lista pelo WhatsApp.</p>
+        </div>
+        <div class="order-teaser reveal">
+          <p>Entre ou crie sua conta para consultar o catálogo, escolher os produtos e acompanhar o pedido.</p>
+          <a class="button button-primary order-link" href="pedido.html">Fazer pedido</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="galeria" aria-labelledby="gallery-title">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Um pouco da My Drink</p>
+          <h2 id="gallery-title">Galeria de imagens</h2>
+        </div>
+        <div class="gallery-grid">
+          <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto da fachada da My Drink">
+            <span class="image-frame"><img src="images/galeria-fachada.jpeg" alt="Fachada da My Drink à noite, com letreiro iluminado e mesas externas"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
+          </button>
+          <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto do interior da My Drink">
+            <span class="image-frame"><img src="images/galeria-interior.jpeg" alt="Interior da My Drink com geladeiras de bebidas e balcão refrigerado"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
+          </button>
+          <button class="gallery-trigger reveal" type="button" aria-label="Ampliar foto repetida do interior da My Drink">
+            <span class="image-frame"><img src="images/galeria-interior.jpeg" alt="Foto repetida do interior da My Drink"><span class="image-placeholder" aria-hidden="true">Foto em breve</span></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-light" id="contato" aria-labelledby="contact-title">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Estamos à disposição</p>
+          <h2 id="contact-title">Entre em contato</h2>
+        </div>
+        <div class="contact-grid">
+          <article class="contact-card reveal">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3.2a2 2 0 0 1-.6 1.7L7.1 10.5a16 16 0 0 0 6 6l1.9-1.9a2 2 0 0 1 1.7-.6l3.2.5a2 2 0 0 1 2.1 2.4Z"/></svg>
+              Telefone
+            </h3>
+            <p>31 88 9639 0014</p>
+          </article>
+          <article class="contact-card reveal">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M9 9a5 5 0 0 0 6 6l1-1-2-2-1 1a4 4 0 0 1-2-2l1-1-2-2-1 1Z"/></svg>
+              WhatsApp
+            </h3>
+            <p><a class="whatsapp-link" data-whatsapp-number href="#pedido" target="_blank" rel="noopener noreferrer">+55 31 99505-3028</a></p>
+          </article>
+          <article class="contact-card reveal">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Funcionamento
+            </h3>
+            <div class="store-hours">
+              <p><strong>Segunda a sábado:</strong> 9h às 20h</p>
+              <p>Domingo: [HORÁRIO DE DOMINGO A CONFIRMAR]</p>
+              <p class="hours-note">Em alguns dias funcionamos até as 3h da manhã. Consulte o WhatsApp ou veja se estamos abertos agora.</p>
+              <span class="opening-badge contact-opening-badge" data-opening-status hidden aria-live="polite"></span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="localizacao" aria-labelledby="location-title">
+      <div class="container location-layout reveal">
+        <div class="location-copy">
+          <p class="eyebrow">Venha nos visitar</p>
+          <h2 id="location-title">Onde estamos</h2>
+          <p class="address" data-store-address>Avenida JK, 134 – Centro, Betim – MG</p>
+          <p>CEP: [CEP A CONFIRMAR]</p>
+          <a class="button button-primary directions-link" data-map-directions target="_blank" rel="noopener noreferrer">Como chegar</a>
+        </div>
+        <div class="map-embed" id="store-map-container">
+          <iframe
+            id="store-map"
+            title="Mapa da My Drink na Avenida JK, 134, Centro, Betim – MG"
+            width="100%"
+            height="360"
+            allowfullscreen>
+          </iframe>
+          <div class="map-fallback" id="map-fallback" role="status" aria-live="polite" hidden>
+            <p>Não foi possível carregar o mapa. Você ainda pode abrir a localização no Google Maps.</p>
+            <p class="map-fallback-address" data-store-address>Avenida JK, 134 – Centro, Betim – MG</p>
+            <a class="button button-primary" data-map-directions target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="instagram-section" aria-labelledby="instagram-title">
+      <div class="container instagram-card reveal">
+        <svg class="icon instagram-logo" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/>
+          <circle cx="12" cy="12" r="4"/>
+          <circle cx="18" cy="6" r="1"/>
+        </svg>
+        <p class="instagram-eyebrow">Novidades e promoções</p>
+        <h2 id="instagram-title">Siga a My Drink no Instagram</h2>
+        <a class="instagram-handle" data-instagram-user-link data-instagram-link target="_blank" rel="noopener noreferrer">
+          <span data-instagram-user></span>
+        </a>
+        <p class="instagram-copy">Veja novidades, promoções e o dia a dia da loja.</p>
+        <a class="instagram-button" data-instagram-link target="_blank" rel="noopener noreferrer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="18" cy="6" r="1"/>
+          </svg>
+          Seguir no Instagram
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="#inicio">My<span>Drink</span></a>
+      <div class="footer-store-info">
+        <p>Avenida JK, 134 – Centro, Betim – MG</p>
+        <p>Segunda a sábado: 9h às 20h · Domingo: [HORÁRIO DE DOMINGO A CONFIRMAR]</p>
+      </div>
+      <div class="social-links" aria-label="Redes sociais">
+        <a data-instagram-link target="_blank" rel="noopener noreferrer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="18" cy="6" r="1"/></svg>
+          Instagram <span data-instagram-user></span>
+        </a>
+      </div>
+      <p class="copyright">&copy; <span id="current-year">2026</span> My Drink. Todos os direitos reservados.</p>
+      <a class="manager-footer-link" href="gestor-login.html">Área do gestor</a>
+    </div>
+  </footer>
+
+  <dialog class="lightbox" id="gallery-lightbox" aria-label="Galeria ampliada">
+    <div class="lightbox-content">
+      <button class="lightbox-close" type="button" aria-label="Fechar galeria">×</button>
+      <button class="lightbox-nav lightbox-prev" type="button" aria-label="Foto anterior">‹</button>
+      <figure class="lightbox-figure">
+        <img class="lightbox-image" src="" alt="">
+        <figcaption class="lightbox-caption"></figcaption>
+      </figure>
+      <button class="lightbox-nav lightbox-next" type="button" aria-label="Próxima foto">›</button>
+    </div>
+  </dialog>
+
+  <a class="whatsapp-float whatsapp-link" href="#pedido" target="_blank" rel="noopener noreferrer" aria-label="Converse com a My Drink pelo WhatsApp">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M9 9a5 5 0 0 0 6 6l1-1-2-2-1 1a4 4 0 0 1-2-2l1-1-2-2-1 1Z"/></svg>
+    WhatsApp
+  </a>
+</body>
+</html>

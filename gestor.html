@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Painel administrativo demonstrativo da My Drink.">
+  <title>Painel do gestor | My Drink</title>
+  <script src="storage.js"></script>
+  <script>
+    try {
+      if (!MyDrinkStorage.temSessaoGestor()) window.location.replace("gestor-login.html");
+    } catch (erro) {
+      window.location.replace("gestor-login.html");
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script src="gestor.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação do gestor">
+      <a class="brand" href="gestor.html">My<span>Drink</span> <small>Gestor</small></a>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="manager-nav">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="manager-nav">
+        <li><a href="index.html">Ver site</a></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+        <li><button class="button button-outline manager-logout" type="button" data-manager-logout>Sair</button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-main manager-main">
+    <section class="section section-light" aria-labelledby="manager-title">
+      <div class="container">
+        <div class="manager-heading">
+          <div>
+            <p class="eyebrow">Administração local</p>
+            <h1 class="page-title" id="manager-title">Painel do gestor</h1>
+          </div>
+          <button class="button button-secondary" id="restore-demo-data" type="button">Restaurar dados de exemplo</button>
+        </div>
+
+        <div class="manager-message" id="manager-message" role="status" aria-live="polite"></div>
+        <div class="manager-tabs" role="tablist" aria-label="Seções do painel">
+          <button class="manager-tab is-active" id="tab-overview" type="button" role="tab" tabindex="0" aria-selected="true" aria-controls="panel-overview" data-manager-tab="overview">Resumo</button>
+          <button class="manager-tab" id="tab-orders" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-orders" data-manager-tab="orders">Pedidos</button>
+          <button class="manager-tab" id="tab-stock" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-stock" data-manager-tab="stock">Estoque</button>
+          <button class="manager-tab" id="tab-missing" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-missing" data-manager-tab="missing">Produtos em falta</button>
+          <button class="manager-tab" id="tab-sales" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-sales" data-manager-tab="sales">Vendas</button>
+          <button class="manager-tab" id="tab-customers" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-customers" data-manager-tab="customers">Clientes</button>
+        </div>
+
+        <section class="manager-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" data-manager-panel="overview">
+          <h2 class="subsection-title">Resumo</h2>
+          <div class="metric-grid">
+            <article class="metric-card"><h3>Vendas hoje</h3><p id="sales-today">R$ 0,00</p></article>
+            <article class="metric-card"><h3>Vendas no mês</h3><p id="sales-month">R$ 0,00</p></article>
+            <article class="metric-card"><h3>Pedidos</h3><p id="orders-count">0</p></article>
+            <article class="metric-card"><h3>Ticket médio</h3><p id="average-ticket">R$ 0,00</p></article>
+            <article class="metric-card"><h3>Pedidos pendentes</h3><p id="pending-count">0</p></article>
+            <article class="metric-card"><h3>Produtos em falta</h3><p id="low-stock-count">0</p></article>
+          </div>
+          <section class="hours-manager-card" aria-labelledby="manager-hours-title">
+            <div>
+              <h3 id="manager-hours-title">Horário estendido de hoje</h3>
+              <p>Ative esta opção somente nos dias em que a loja funcionará até as 3h da manhã.</p>
+              <span class="opening-badge manager-opening-badge" data-opening-status hidden aria-live="polite"></span>
+            </div>
+            <button class="button button-secondary" id="toggle-extended-hours" type="button" aria-pressed="false">Ativar horário estendido até 3h</button>
+          </section>
+          <section class="hours-manager-card" aria-labelledby="store-measures-title">
+            <div>
+              <h3 id="store-measures-title">Medidas da loja</h3>
+              <p>Os valores são usados nos textos de copão e dose. Uma garrafa rende 10 doses.</p>
+            </div>
+            <form id="store-measures-form" class="form-grid" novalidate>
+              <div><label for="copao-size">Copão (ml)</label><input id="copao-size" type="number" min="1" required></div>
+              <div><label for="dose-size">Dose (ml)</label><input id="dose-size" type="number" min="1" required></div>
+              <div><label class="choice-label" for="copao-energy"><input id="copao-energy" type="checkbox"> Energético incluído no copão</label></div>
+              <div><label for="copao-drink-volume">Bebida no copão em ml (opcional)</label><input id="copao-drink-volume" type="number" min="1"></div>
+              <button class="button button-primary" type="submit">Salvar medidas</button>
+            </form>
+          </section>
+          <p class="demo-notice">Pedidos e produtos de demonstração são fictícios e aparecem marcados como exemplo.</p>
+        </section>
+
+        <section class="manager-panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" data-manager-panel="orders" hidden>
+          <div class="panel-heading">
+            <h2 class="subsection-title">Pedidos</h2>
+            <div class="filter-row">
+              <label for="order-status-filter">Status</label>
+              <select id="order-status-filter">
+                <option value="">Todos</option>
+                <option>Recebido</option><option>Em preparo</option><option>Pronto</option><option>Entregue</option><option>Cancelado</option>
+              </select>
+              <label for="order-date-filter">Data</label>
+              <input id="order-date-filter" type="date">
+            </div>
+          </div>
+          <div class="manager-list" id="manager-orders"></div>
+        </section>
+
+        <section class="manager-panel" id="panel-stock" role="tabpanel" aria-labelledby="tab-stock" data-manager-panel="stock" hidden>
+          <div class="panel-heading">
+            <h2 class="subsection-title">Estoque</h2>
+            <div class="button-row">
+              <button class="button button-primary" id="new-product" type="button">Adicionar produto</button>
+              <button class="button button-secondary" id="fill-demo-stock" type="button">Preencher estoque de demonstração</button>
+              <button class="button button-outline" id="restock-low" type="button">Adicionar unidades aos produtos em falta</button>
+            </div>
+          </div>
+          <div class="stock-filters" aria-label="Filtros do estoque">
+            <div><label for="stock-category-filter">Categoria</label><select id="stock-category-filter"></select></div>
+            <div><label for="stock-search">Buscar por nome</label><input id="stock-search" type="search" autocomplete="off"></div>
+            <label class="choice-label" for="stock-only-low"><input id="stock-only-low" type="checkbox"> Somente em falta</label>
+            <button class="button button-outline" id="toggle-category-active" type="button">Ativar/desativar categoria</button>
+          </div>
+          <form class="product-editor" id="product-form" hidden novalidate>
+            <h3 id="product-form-title">Novo produto</h3>
+            <input id="product-id" type="hidden">
+            <div class="form-grid">
+              <div><label for="product-name">Produto</label><input id="product-name" required></div>
+              <div><label for="product-category">Categoria</label>
+                <input id="product-category" list="product-category-list" autocomplete="off" required>
+                <datalist id="product-category-list"></datalist>
+              </div>
+            </div>
+            <div class="product-copao-fields">
+              <label class="choice-label" for="product-allow-copao">
+                <input id="product-allow-copao" type="checkbox">
+                Permitir montagem de copão com esta bebida
+              </label>
+              <div>
+                <label for="product-beverage-type">Tipo da bebida para agrupar no copão</label>
+                <select id="product-beverage-type">
+                  <option value="">Não se aplica</option>
+                  <option value="whisky">Whisky</option>
+                  <option value="gin">Gin</option>
+                  <option value="vodka">Vodka</option>
+                  <option value="rum">Rum</option>
+                  <option value="cachaça">Cachaça</option>
+                  <option value="aperitivo">Aperitivo</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <label class="choice-label" for="product-allow-mixture">
+                <input id="product-allow-mixture" type="checkbox">
+                Permite mistura no copão
+              </label>
+              <label class="choice-label" for="product-restricted">
+                <input id="product-restricted" type="checkbox">
+                Venda restrita a maiores de 18 anos
+              </label>
+            </div>
+            <fieldset class="variant-editor">
+              <legend>Opções de venda</legend>
+              <p class="field-help">Cadastre preço e estoque separadamente para cada apresentação. Valores não confirmados podem ficar em branco ou zerados.</p>
+              <div class="variant-editor-list" id="product-variants"></div>
+              <button class="button button-outline" id="add-product-variant" type="button">Adicionar opção</button>
+            </fieldset>
+            <p class="form-message" id="product-message" role="alert" aria-live="polite"></p>
+            <div class="button-row">
+              <button class="button button-secondary" id="cancel-product" type="button">Cancelar</button>
+              <button class="button button-primary" type="submit">Salvar produto</button>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table class="data-table">
+              <caption>Produtos, opções de venda e estoque atual</caption>
+              <thead><tr><th>Produto</th><th>Opção</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Mínimo</th><th>Situação</th><th>Ações</th></tr></thead>
+              <tbody id="stock-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="manager-panel" id="panel-missing" role="tabpanel" aria-labelledby="tab-missing" data-manager-panel="missing" hidden>
+          <h2 class="subsection-title">Produtos em falta ou abaixo do mínimo</h2>
+          <div class="manager-list" id="missing-products"></div>
+        </section>
+
+        <section class="manager-panel" id="panel-sales" role="tabpanel" aria-labelledby="tab-sales" data-manager-panel="sales" hidden>
+          <div class="panel-heading">
+            <h2 class="subsection-title">Vendas</h2>
+            <button class="button button-secondary" id="export-sales" type="button">Exportar vendas em CSV</button>
+          </div>
+          <h3>Vendas dos últimos 7 dias</h3>
+          <div class="simple-chart" id="sales-chart" role="img" aria-label="Gráfico de vendas dos últimos sete dias"></div>
+          <h3>Produtos mais vendidos</h3>
+          <div class="simple-chart" id="products-chart" role="img" aria-label="Gráfico de produtos mais vendidos"></div>
+        </section>
+
+        <section class="manager-panel" id="panel-customers" role="tabpanel" aria-labelledby="tab-customers" data-manager-panel="customers" hidden>
+          <h2 class="subsection-title">Clientes cadastrados</h2>
+          <div class="table-wrap">
+            <table class="data-table">
+              <caption>Clientes salvos neste navegador</caption>
+              <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>CPF</th><th>Pedidos</th></tr></thead>
+              <tbody id="customers-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="index.html">My<span>Drink</span></a>
+      <p class="copyright">Área administrativa demonstrativa.</p>
+    </div>
+  </footer>
+</body>
+</html>

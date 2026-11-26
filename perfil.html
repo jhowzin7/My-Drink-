@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gerencie seu perfil e acompanhe seus pedidos na My Drink.">
+  <title>Meu perfil | My Drink</title>
+  <script src="storage.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script src="perfil.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navigation container" aria-label="Navegação principal">
+      <a class="brand" href="index.html" aria-label="My Drink - início">My<span>Drink</span></a>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu-principal">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="menu-principal">
+        <li><a href="index.html">Início</a></li>
+        <li><a class="order-link" href="pedido.html">Fazer pedido</a></li>
+        <li data-customer-menu></li>
+        <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema"></button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-main">
+    <section class="section section-light" aria-labelledby="profile-title">
+      <div class="container profile-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Seus dados e preferências</p>
+          <h1 class="page-title" id="profile-title">Meu perfil</h1>
+        </div>
+
+        <div class="profile-card">
+          <div class="profile-photo-area">
+            <div class="profile-avatar">
+              <img class="profile-photo" id="profile-photo-preview" alt="Foto de perfil" hidden>
+              <span class="profile-initials" id="profile-initials" aria-hidden="true"></span>
+            </div>
+            <label class="button button-outline file-button" for="profile-photo">Escolher foto</label>
+            <input id="profile-photo" class="visually-hidden" type="file" accept="image/*">
+            <p class="field-help">A imagem será reduzida antes de ser salva neste navegador.</p>
+          </div>
+
+          <form id="profile-form" novalidate>
+            <div class="form-grid">
+              <div>
+                <label for="profile-name">Nome completo</label>
+                <input id="profile-name" name="name" autocomplete="name" required aria-describedby="profile-message">
+              </div>
+              <div>
+                <label for="profile-display-name">Nome de exibição (opcional)</label>
+                <input id="profile-display-name" name="displayName" maxlength="24" autocomplete="nickname" aria-describedby="profile-display-help profile-message">
+                <p class="field-help" id="profile-display-help">Aparece no botão do perfil. Se deixar em branco, usamos seu primeiro nome.</p>
+              </div>
+              <div>
+                <label for="profile-username">Nome de usuário</label>
+                <input id="profile-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9._-]{3,24}" aria-describedby="profile-username-help profile-message">
+                <p class="field-help" id="profile-username-help">Usado para entrar. De 3 a 24 letras sem acento, números, ponto, hífen ou sublinhado.</p>
+              </div>
+              <div>
+                <label for="profile-cpf">CPF</label>
+                <input id="profile-cpf" name="cpf" inputmode="numeric" readonly required aria-describedby="profile-message">
+                <button class="text-button" id="edit-cpf" type="button">Alterar CPF</button>
+              </div>
+              <div>
+                <label for="profile-phone">Telefone / WhatsApp</label>
+                <input id="profile-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required aria-describedby="profile-message">
+              </div>
+              <div>
+                <label for="profile-email">E-mail</label>
+                <input id="profile-email" name="email" type="email" autocomplete="email" required aria-describedby="profile-message">
+              </div>
+              <div>
+                <label for="profile-birthdate">Data de nascimento</label>
+                <input id="profile-birthdate" name="birthdate" type="date" autocomplete="bday" required aria-describedby="profile-message">
+              </div>
+              <div class="form-grid-wide">
+                <label for="profile-address">Endereço de entrega (opcional)</label>
+                <input id="profile-address" name="address" autocomplete="street-address" placeholder="Rua, número, bairro e cidade">
+              </div>
+            </div>
+
+            <fieldset class="password-fieldset">
+              <legend>Alterar senha (opcional)</legend>
+              <div class="form-grid">
+                <div>
+                  <label for="profile-current-password">Senha atual</label>
+                  <input id="profile-current-password" name="currentPassword" type="password" autocomplete="current-password" aria-describedby="profile-message">
+                </div>
+                <div>
+                  <label for="profile-new-password">Nova senha</label>
+                  <input id="profile-new-password" name="newPassword" type="password" autocomplete="new-password" minlength="6" aria-describedby="profile-message">
+                </div>
+                <div>
+                  <label for="profile-confirm-password">Confirme a nova senha</label>
+                  <input id="profile-confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="6" aria-describedby="profile-message">
+                </div>
+              </div>
+            </fieldset>
+
+            <p class="form-message" id="profile-message" role="status" aria-live="polite"></p>
+            <div class="button-row">
+              <button class="button button-secondary" id="cancel-profile" type="button">Cancelar</button>
+              <button class="button button-primary" type="submit">Salvar alterações</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="pedidos" aria-labelledby="my-orders-title">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Acompanhe seus pedidos</p>
+          <h2 id="my-orders-title">Meus pedidos</h2>
+        </div>
+        <div class="customer-orders" id="customer-orders" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="brand brand-footer" href="index.html">My<span>Drink</span></a>
+      <p class="copyright">© <span id="current-year">2026</span> My Drink. Todos os direitos reservados.</p>
+      <a class="manager-footer-link" href="gestor-login.html">Área do gestor</a>
+    </div>
+  </footer>
+</body>
+</html>
