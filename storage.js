@@ -1207,17 +1207,30 @@
   }
 
   function atualizarEstoqueVariante(produtoId, varianteId, estoque) {
-    const quantidade = Number(estoque);
-    if (!Number.isInteger(quantidade) || quantidade < 0) {
-      throw new Error("O estoque precisa ser um número inteiro não negativo.");
-    }
+    return atualizarQuantidadeVariante(produtoId, varianteId, { estoque });
+  }
 
+  function atualizarQuantidadeVariante(produtoId, varianteId, quantidade) {
     const produtos = buscarProdutos();
     const produto = produtos.find((item) => item.id === produtoId);
     if (!produto) throw new Error("O produto não foi encontrado.");
     const variante = produto.variantes.find((item) => item.id === varianteId);
     if (!variante) throw new Error("A opção de venda não foi encontrada.");
-    variante.estoque = quantidade;
+
+    if (quantidade.estoque !== undefined) {
+      const novoEstoque = Number(quantidade.estoque);
+      if (!Number.isInteger(novoEstoque) || novoEstoque < 0) {
+        throw new Error("O estoque precisa ser um número inteiro não negativo.");
+      }
+      variante.estoque = novoEstoque;
+    }
+    if (quantidade.minimo !== undefined) {
+      const novoMinimo = Number(quantidade.minimo);
+      if (!Number.isInteger(novoMinimo) || novoMinimo < 0) {
+        throw new Error("A quantidade mínima precisa ser um número inteiro não negativo.");
+      }
+      variante.minimo = novoMinimo;
+    }
 
     const garrafa = produto.variantes.find((item) => item.nome.toLocaleLowerCase("pt-BR") === "garrafa");
     const dose = produto.variantes.find((item) => item.nome.toLocaleLowerCase("pt-BR").startsWith("dose"));
@@ -1322,12 +1335,10 @@
   }
 
   function removerProduto(id) {
-    const pedidos = buscarPedidos();
-    const usado = pedidos.some((pedido) => pedido.itens.some((item) => {
-      return item.produtoId === id || item.geloProdutoId === id;
-    }));
-    if (usado) throw new Error("Este produto aparece em pedidos. Desative-o em vez de removê-lo.");
-    salvarProdutos(buscarProdutos().filter((produto) => produto.id !== id));
+    const produtos = buscarProdutos();
+    const existe = produtos.some((produto) => produto.id === id);
+    if (!existe) throw new Error("Não encontramos este produto.");
+    salvarProdutos(produtos.filter((produto) => produto.id !== id));
   }
 
   function buscarPedidos() {
@@ -1656,6 +1667,7 @@
     salvarMedidasLoja,
     salvarProduto,
     atualizarEstoqueVariante,
+    atualizarQuantidadeVariante,
     removerProduto,
     buscarPedidos,
     buscarPedidosDoCliente,

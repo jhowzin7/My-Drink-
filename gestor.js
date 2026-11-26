@@ -494,6 +494,7 @@ const GESTOR_SENHA = "mydrink@2026";
     }
     input.value = valor === null || valor === undefined ? "" : String(valor);
     if (nomeCampo === "estoque") input.dataset.savedStock = input.value;
+    if (nomeCampo === "minimo") input.dataset.savedMinimum = input.value;
     grupo.append(label, input);
     linha.append(grupo);
     return input;
@@ -588,6 +589,20 @@ const GESTOR_SENHA = "mydrink@2026";
       } catch (erro) {
         estoqueInput.value = estoqueInput.dataset.savedStock;
         atualizarCamposDerivados();
+        aviso.textContent = erro.message;
+      }
+    });
+    minimoInput.addEventListener("change", () => {
+      if (!produtoEmEdicao || !linha.dataset.variantId) return;
+      try {
+        storage.atualizarQuantidadeVariante(produtoEmEdicao.id, linha.dataset.variantId, {
+          minimo: minimoInput.value
+        });
+        minimoInput.dataset.savedMinimum = minimoInput.value;
+        aviso.textContent = `Quantidade mínima de ${produtoEmEdicao.nome} salva.`;
+        atualizarPainel();
+      } catch (erro) {
+        minimoInput.value = minimoInput.dataset.savedMinimum;
         aviso.textContent = erro.message;
       }
     });

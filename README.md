@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!-- Adicione aqui uma captura de tela: ![Prévia do site](images/preview.png) -->
 
 # My Drink
@@ -93,3 +94,6 @@ Jhonatan Pires Inácio — turma INF007 — projeto Betim Digital.
 ## Licença
 
 Projeto para fins educacionais.
+=======
+
+>>>>>>> 38e10b046f60e72ffc463763ab8b03de88c46fe0
